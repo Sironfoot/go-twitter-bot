@@ -1,0 +1,9 @@
+{
+    "twitterAuth":
+    {
+        "consumerKey": "CONSUMER_KEY_HERE",
+        "consumerSecret": "CONSUMER_SECRET_HERE",
+        "accessToken": "ACCESS_TOKEN_HERE",
+        "accessTokenSecret": "ACCESS_TOKEN_SECRET_HERE"
+    }
+}
