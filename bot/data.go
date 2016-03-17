@@ -38,6 +38,24 @@ var tweets = []string{
 		"\t\t\ttwo\n" +
 		"\t\t\t\tproblems.",
 
+	"Some people, confronting a problem, think\n" +
+		"\"I know, I'll use SEO.\" Now they have 2 problems, issues, difficulties, complications, porn, sex…",
+
+	"Some people, when confronted with a problem, think\n" +
+		"\"I know, I'll use floating point arithmetic.\" Now they have 1.999999999997 problems.",
+
+	"Some people, when confronted with a problem, think\n" +
+		"\"I know, I'll ask Jay-Z.\" Now they have 99 problems (but a bitch ain't one).",
+
+	"Some people, when confronted with a problem, think\n" +
+		"\"I know, I'll ask Steve Balmer.\" Now they have DEVELOPERS, DEVELOPERS, DEVELOPERS...",
+
+	"Some people, wanting an escape from their full-time job, think\n" +
+		"\"I know, I'll contribute to open source.\" Now they have two full-time jobs.",
+
+	"Some people, when confronted with a problem, think\n" +
+		"\"I know, I’ll use Python.\" Now they import solution and have a beer.",
+
 	"Some people, when confronted with a problem, think:\n" +
 		"\"I know, I'll use caching.\" Now they have one problems.",
 

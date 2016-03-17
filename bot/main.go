@@ -32,5 +32,7 @@ func main() {
 
 	fmt.Println("Go Twitter Bot is running...")
 
-	fmt.Println(config.TwitterAuth.AccessToken)
+	for i, tweet := range tweets {
+		fmt.Printf("%v - %s\n", i+1, tweet)
+	}
 }
