@@ -33,10 +33,10 @@ var tweets = []string{
 	"Some people, confronted with a problem, think\n" +
 		"\"I know, I'll use async JavaScript callbacks.\"\n" +
 		"Now\n" +
-		"\tthey\n" +
-		"\t\thave\n" +
-		"\t\t\ttwo\n" +
-		"\t\t\t\tproblems.",
+		"  they\n" +
+		"    have\n" +
+		"      two\n" +
+		"        problems.",
 
 	"Some people, confronting a problem, think\n" +
 		"\"I know, I'll use SEO.\" Now they have 2 problems, issues, difficulties, complications, porn, sex…",

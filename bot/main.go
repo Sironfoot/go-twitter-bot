@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -18,16 +19,30 @@ type twitterAuth struct {
 	AccessTokenSecret string `json:"accessTokenSecret"`
 }
 
+var configFile = flag.String("config", "config.json", "path to config file")
+
 func main() {
+	var fatalErr error
+	defer func() {
+		if fatalErr != nil {
+			flag.PrintDefaults()
+			log.Fatalln(fatalErr)
+		}
+	}()
+
+	flag.Parse()
+
 	var config config
 
-	file, err := os.Open("config.json")
+	file, err := os.Open(*configFile)
 	if err != nil {
-		log.Fatal("can't open config.json: ", err)
+		fatalErr = fmt.Errorf("can't open %s: %s", *configFile, err)
+		return
 	}
 
 	if err := json.NewDecoder(file).Decode(&config); err != nil {
-		log.Fatal("can't decode config.json: ", err)
+		fatalErr = fmt.Errorf("can't decode %s: %s", *configFile, err)
+		return
 	}
 
 	fmt.Println("Go Twitter Bot is running...")
