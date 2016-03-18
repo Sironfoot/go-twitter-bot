@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 )
@@ -48,28 +47,13 @@ func main() {
 
 	fmt.Println("Go Twitter Bot is running...")
 
-	var newTweets []Tweet
-
-	for _, tweet := range tweets {
-		//fmt.Printf("%v - %s\n", i+1, tweet)
-
-		newTweet := Tweet{
-			Text:     tweet,
-			IsPosted: false,
-		}
-		newTweets = append(newTweets, newTweet)
-	}
-
-	tweetData, err := json.MarshalIndent(&newTweets, "", "\t")
+	tweets, err := LoadTweets("tweets.json")
 	if err != nil {
-		fatalErr = err
+		fatalErr = fmt.Errorf("problem loading tweets: %s", err)
 		return
 	}
 
-	if err := ioutil.WriteFile("tweets.json", tweetData, os.ModePerm); err != nil {
-		fatalErr = err
-		return
+	for i, tweet := range tweets {
+		fmt.Printf("%v - %s\n", i+1, tweet.Text)
 	}
-
-	fmt.Println("Done writing json")
 }
