@@ -1,5 +1,10 @@
 package main
 
+type Tweet struct {
+	Text     string `json:"text"`
+	IsPosted bool   `json:"isPosted"`
+}
+
 var tweets = []string{
 	"Some people, when confronted with a problem, think\n" +
 		"\"I know, I'll use regular expressions.\" Now they have two problems.",
