@@ -2,10 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
 	"os"
+	"time"
 )
 
 type config struct {
@@ -20,6 +22,8 @@ type twitterAuth struct {
 }
 
 var configFile = flag.String("config", "config.json", "path to config file")
+var dataFile = flag.String("data", "tweets.json", "path to json file containing tweets")
+var frequency = flag.Int64("freq", 1440, "Frequency to post each tweet (in minutes)")
 
 func main() {
 	var fatalErr error
@@ -47,13 +51,45 @@ func main() {
 
 	fmt.Println("Go Twitter Bot is running...")
 
-	tweets, err := LoadTweets("tweets.json")
+	tweets, err := LoadTweets(*dataFile)
 	if err != nil {
 		fatalErr = fmt.Errorf("problem loading tweets: %s", err)
 		return
 	}
 
-	for i, tweet := range tweets {
-		fmt.Printf("%v - %s\n", i+1, tweet.Text)
+	ticker := time.NewTicker(time.Minute * time.Duration(*frequency))
+
+	for range ticker.C {
+		tweet, err := getNextTweet(tweets)
+		if err == errNoMoreTweetsToPost {
+			ticker.Stop()
+			break
+		}
+
+		fmt.Printf("Tweeting: %s\n\n", tweet.Text)
+		// TODO: post tweet to Twitter
+
+		tweet.IsPosted = true
+
+		err = SaveTweets(tweets, *dataFile)
+		if err != nil {
+			fatalErr = fmt.Errorf("problem saving tweets: %s", err)
+			return
+		}
 	}
+
+	fmt.Println("That's all the tweets")
+}
+
+var errNoMoreTweetsToPost = errors.New("No more tweets left to be posted")
+
+func getNextTweet(tweets []Tweet) (*Tweet, error) {
+	for i := range tweets {
+		tweet := &tweets[i]
+		if !tweet.IsPosted {
+			return tweet, nil
+		}
+	}
+
+	return nil, errNoMoreTweetsToPost
 }
