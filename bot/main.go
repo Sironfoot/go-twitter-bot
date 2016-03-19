@@ -67,7 +67,12 @@ func main() {
 		}
 
 		fmt.Printf("Tweeting: %s\n\n", tweet.Text)
-		// TODO: post tweet to Twitter
+
+		err = postTweet(config.TwitterAuth, tweet.Text)
+		if err != nil {
+			fatalErr = err
+			return
+		}
 
 		tweet.IsPosted = true
 
