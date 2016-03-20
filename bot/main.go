@@ -51,37 +51,47 @@ func main() {
 
 	fmt.Println("Go Twitter Bot is running...")
 
+	fatalErr = postNextTweet(config)
+	if fatalErr != nil {
+		return
+	}
+
 	ticker := time.NewTicker(time.Minute * time.Duration(*frequency))
-
 	for range ticker.C {
-		tweets, err := LoadTweets(*dataFile)
-		if err != nil {
-			fatalErr = fmt.Errorf("problem loading tweets: %s", err)
-			return
-		}
-
-		tweet, err := getNextTweet(tweets)
-		if err == errNoMoreTweetsToPost {
-			fmt.Println("That's all the tweets")
-			continue
-		}
-
-		fmt.Printf("Tweeting: %s\n\n", tweet.Text)
-
-		err = postTweet(config.TwitterAuth, tweet.Text)
-		if err != nil {
-			fatalErr = err
-			return
-		}
-
-		tweet.IsPosted = true
-
-		err = SaveTweets(tweets, *dataFile)
-		if err != nil {
-			fatalErr = fmt.Errorf("problem saving tweets: %s", err)
+		fatalErr := postNextTweet(config)
+		if fatalErr != nil {
 			return
 		}
 	}
+}
+
+func postNextTweet(config config) error {
+	tweets, err := LoadTweets(*dataFile)
+	if err != nil {
+		return fmt.Errorf("problem loading tweets: %s", err)
+	}
+
+	tweet, err := getNextTweet(tweets)
+	if err == errNoMoreTweetsToPost {
+		fmt.Println("That's all the tweets")
+		return nil
+	}
+
+	fmt.Printf("Tweeting: %s\n\n", tweet.Text)
+
+	err = postTweet(config.TwitterAuth, tweet.Text)
+	if err != nil {
+		return err
+	}
+
+	tweet.IsPosted = true
+
+	err = SaveTweets(tweets, *dataFile)
+	if err != nil {
+		return fmt.Errorf("problem saving tweets: %s", err)
+	}
+
+	return nil
 }
 
 var errNoMoreTweetsToPost = errors.New("No more tweets left to be posted")
