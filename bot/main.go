@@ -51,19 +51,19 @@ func main() {
 
 	fmt.Println("Go Twitter Bot is running...")
 
-	tweets, err := LoadTweets(*dataFile)
-	if err != nil {
-		fatalErr = fmt.Errorf("problem loading tweets: %s", err)
-		return
-	}
-
 	ticker := time.NewTicker(time.Minute * time.Duration(*frequency))
 
 	for range ticker.C {
+		tweets, err := LoadTweets(*dataFile)
+		if err != nil {
+			fatalErr = fmt.Errorf("problem loading tweets: %s", err)
+			return
+		}
+
 		tweet, err := getNextTweet(tweets)
 		if err == errNoMoreTweetsToPost {
-			ticker.Stop()
-			break
+			fmt.Println("That's all the tweets")
+			continue
 		}
 
 		fmt.Printf("Tweeting: %s\n\n", tweet.Text)
@@ -82,8 +82,6 @@ func main() {
 			return
 		}
 	}
-
-	fmt.Println("That's all the tweets")
 }
 
 var errNoMoreTweetsToPost = errors.New("No more tweets left to be posted")
