@@ -4,12 +4,14 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
+	"time"
 )
 
 // Tweet keeps record of a tweet and whether or not it has been posted to Twitter
 type Tweet struct {
-	Text     string `json:"text"`
-	IsPosted bool   `json:"isPosted"`
+	Text     string    `json:"text"`
+	IsPosted bool      `json:"isPosted"`
+	PostOn   time.Time `json:"postOn"`
 }
 
 // LoadTweets loads Tweet structs from a json data file

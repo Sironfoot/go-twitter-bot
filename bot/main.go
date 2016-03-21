@@ -23,7 +23,6 @@ type twitterAuth struct {
 
 var configFile = flag.String("config", "config.json", "path to config file")
 var dataFile = flag.String("data", "tweets.json", "path to json file containing tweets")
-var frequency = flag.Int64("freq", 1440, "Frequency to post each tweet (in minutes)")
 
 func main() {
 	var fatalErr error
@@ -51,12 +50,7 @@ func main() {
 
 	fmt.Println("Go Twitter Bot is running...")
 
-	fatalErr = postNextTweet(config)
-	if fatalErr != nil {
-		return
-	}
-
-	ticker := time.NewTicker(time.Minute * time.Duration(*frequency))
+	ticker := time.NewTicker(time.Second * 60)
 	for range ticker.C {
 		fatalErr := postNextTweet(config)
 		if fatalErr != nil {
@@ -73,7 +67,7 @@ func postNextTweet(config config) error {
 
 	tweet, err := getNextTweet(tweets)
 	if err == errNoMoreTweetsToPost {
-		fmt.Println("That's all the tweets")
+		fmt.Println("skip")
 		return nil
 	}
 
@@ -97,9 +91,12 @@ func postNextTweet(config config) error {
 var errNoMoreTweetsToPost = errors.New("No more tweets left to be posted")
 
 func getNextTweet(tweets []Tweet) (*Tweet, error) {
+	now := time.Now().UTC()
+
 	for i := range tweets {
 		tweet := &tweets[i]
-		if !tweet.IsPosted {
+
+		if !tweet.IsPosted && now.After(tweet.PostOn) {
 			return tweet, nil
 		}
 	}
