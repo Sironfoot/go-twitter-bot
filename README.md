@@ -13,5 +13,5 @@ Follow steps 1 & 2 above, then:
 
 1. Build for Linux with `env GOOS=linux GOARCH=amd64 go build`.
 2. Copy the binary, `config.json`, and `tweets.json` to your server.
-3. Place the `go-bot.conf` file in the `/etc/init` directory. Modify username and install dir as required.
+3. Place the `go-bot.conf` file in the `/etc/init` directory. Modify the install dir as required.
 4. (Using upstart init daemon that ships with Ubuntu) Run the cmd `start go-bot`. Check it's running with `ps -ef`. Stop the process with `stop go-bot`.
