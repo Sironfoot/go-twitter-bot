@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-type config struct {
+type configuration struct {
 	TwitterAuth twitterAuth `json:"twitterAuth"`
 }
 
@@ -35,7 +35,7 @@ func main() {
 
 	flag.Parse()
 
-	var config config
+	var config configuration
 
 	file, err := os.Open(*configFile)
 	if err != nil {
@@ -59,7 +59,7 @@ func main() {
 	}
 }
 
-func postNextTweet(config config) error {
+func postNextTweet(config configuration) error {
 	tweets, err := LoadTweets(*dataFile)
 	if err != nil {
 		return fmt.Errorf("problem loading tweets: %s", err)
@@ -67,7 +67,6 @@ func postNextTweet(config config) error {
 
 	tweet, err := getNextTweet(tweets)
 	if err == errNoMoreTweetsToPost {
-		fmt.Println("skip")
 		return nil
 	}
 
