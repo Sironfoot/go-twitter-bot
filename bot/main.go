@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"time"
 )
@@ -22,6 +23,13 @@ type twitterAuth struct {
 
 var configFile = flag.String("config", "config.json", "path to config file")
 var dataFile = flag.String("data", "tweets.json", "path to json file containing tweets")
+var addr = flag.String("addr", "localhost:7000", "Address to run server on")
+
+var (
+	ticker  *time.Ticker
+	stop    = make(chan bool)
+	running = false
+)
 
 func main() {
 	var fatalErr error
@@ -47,15 +55,56 @@ func main() {
 		return
 	}
 
-	log.Println("Go Twitter Bot is running...")
+	mux := http.NewServeMux()
 
-	ticker := time.NewTicker(time.Second * 60)
-	for range ticker.C {
-		fatalErr := postNextTweet(config)
-		if fatalErr != nil {
-			return
+	mux.HandleFunc("/status", func(res http.ResponseWriter, req *http.Request) {
+		if running {
+			fmt.Fprint(res, "Running\n")
+		} else {
+			fmt.Fprint(res, "Paused\n")
 		}
+	})
+
+	mux.HandleFunc("/start", func(res http.ResponseWriter, req *http.Request) {
+		if !running {
+			ticker = time.NewTicker(time.Second * 10)
+			running = true
+
+			go func() {
+				for {
+					select {
+					case <-ticker.C:
+						fatalErr := postNextTweet(config)
+						if fatalErr != nil {
+							panic(fatalErr)
+						}
+					case <-stop:
+						return
+					}
+				}
+			}()
+		}
+
+		fmt.Fprint(res, "Started\n")
+	})
+
+	mux.HandleFunc("/stop", func(res http.ResponseWriter, req *http.Request) {
+		if running {
+			ticker.Stop()
+			stop <- true
+			running = false
+		}
+
+		fmt.Fprint(res, "Stopped\n")
+	})
+
+	server := http.Server{
+		Addr:    *addr,
+		Handler: mux,
 	}
+
+	log.Printf("Go Twitter Bot Server is running on %s...\n\n", *addr)
+	server.ListenAndServe()
 }
 
 func postNextTweet(config configuration) error {
