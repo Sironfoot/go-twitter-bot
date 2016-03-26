@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -65,19 +64,18 @@ func postNextTweet(config configuration) error {
 		return fmt.Errorf("problem loading tweets: %s", err)
 	}
 
-	tweet, err := getNextTweet(tweets)
-	if err == errNoMoreTweetsToPost {
-		return nil
+	nextTweets := getNextTweets(tweets)
+
+	for _, tweet := range nextTweets {
+		fmt.Printf("Tweeting: %s\n\n", tweet.Text)
+
+		err = postTweet(config.TwitterAuth, tweet.Text)
+		if err != nil {
+			return err
+		}
+
+		tweet.IsPosted = true
 	}
-
-	fmt.Printf("Tweeting: %s\n\n", tweet.Text)
-
-	err = postTweet(config.TwitterAuth, tweet.Text)
-	if err != nil {
-		return err
-	}
-
-	tweet.IsPosted = true
 
 	err = SaveTweets(tweets, *dataFile)
 	if err != nil {
@@ -87,18 +85,17 @@ func postNextTweet(config configuration) error {
 	return nil
 }
 
-var errNoMoreTweetsToPost = errors.New("No more tweets left to be posted")
-
-func getNextTweet(tweets []Tweet) (*Tweet, error) {
+func getNextTweets(tweets []Tweet) []*Tweet {
 	now := time.Now().UTC()
+	var nextTweets []*Tweet
 
 	for i := range tweets {
 		tweet := &tweets[i]
 
 		if !tweet.IsPosted && now.After(tweet.PostOn) {
-			return tweet, nil
+			nextTweets = append(nextTweets, tweet)
 		}
 	}
 
-	return nil, errNoMoreTweetsToPost
+	return nextTweets
 }
