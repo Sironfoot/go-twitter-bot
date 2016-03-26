@@ -5,7 +5,13 @@ A simple Twitter bot written in Go
 
 1. Create an app for your Twitter account at https://apps.twitter.com and generate an AccessToken and Secret. Use these to populate config.json.
 2. Put your own tweets in tweets.json.
-3. Run `go build && ./bot -config "config.json" -data "tweets.json"`.
+3. Run `go build && ./bot -config "config.json" -data "tweets.json" -addr ":8080"`. This will launch a web server with the bot in an initially paused state.
+
+## HTTP API Endpoints
+
+- Start the bot: `curl http://localhost:8080/start`
+- Stop with: `curl http://localhost:8080/stop`
+- Check status: `curl http://localhost:8080/status`
 
 ## To Run on a Linux Server
 
