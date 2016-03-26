@@ -47,7 +47,7 @@ func main() {
 		return
 	}
 
-	fmt.Println("Go Twitter Bot is running...")
+	log.Println("Go Twitter Bot is running...")
 
 	ticker := time.NewTicker(time.Second * 60)
 	for range ticker.C {
@@ -67,7 +67,7 @@ func postNextTweet(config configuration) error {
 	nextTweets := getNextTweets(tweets)
 
 	for _, tweet := range nextTweets {
-		fmt.Printf("Tweeting: %s\n\n", tweet.Text)
+		log.Printf("Tweeting: %s\n\n", tweet.Text)
 
 		err = postTweet(config.TwitterAuth, tweet.Text)
 		if err != nil {
