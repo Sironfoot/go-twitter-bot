@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -26,9 +27,10 @@ var dataFile = flag.String("data", "tweets.json", "path to json file containing 
 var addr = flag.String("addr", "localhost:7000", "Address to run server on")
 
 var (
-	ticker  *time.Ticker
-	stop    = make(chan bool)
-	running = false
+	ticker   *time.Ticker
+	stop     = make(chan bool)
+	running  = false
+	tickLock sync.RWMutex
 )
 
 func main() {
@@ -58,6 +60,9 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/status", func(res http.ResponseWriter, req *http.Request) {
+		tickLock.RLock()
+		defer tickLock.RUnlock()
+
 		if running {
 			fmt.Fprint(res, "Running\n")
 		} else {
@@ -66,6 +71,9 @@ func main() {
 	})
 
 	mux.HandleFunc("/start", func(res http.ResponseWriter, req *http.Request) {
+		tickLock.Lock()
+		defer tickLock.Unlock()
+
 		if !running {
 			ticker = time.NewTicker(time.Second * 10)
 			running = true
@@ -89,6 +97,9 @@ func main() {
 	})
 
 	mux.HandleFunc("/stop", func(res http.ResponseWriter, req *http.Request) {
+		tickLock.Lock()
+		defer tickLock.Unlock()
+
 		if running {
 			ticker.Stop()
 			stop <- true
