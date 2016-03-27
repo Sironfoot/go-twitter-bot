@@ -7,7 +7,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 CREATE TABLE users
 (
-    id                      UUID        PRIMARY KEY     DEFAULT uuid_generate_v4(),
+    id                      UUID        PRIMARY KEY     DEFAULT uuid_generate_v1mc(),
     email                   TEXT        NOT NULL        UNIQUE,
     hashed_password         TEXT        NOT NULL,
     is_admin                BOOL        NOT NULL        DEFAULT false,
@@ -16,7 +16,7 @@ CREATE TABLE users
 
 CREATE TABLE twitter_accounts
 (
-    id                      UUID        PRIMARY KEY     DEFAULT uuid_generate_v4(),
+    id                      UUID        PRIMARY KEY     DEFAULT uuid_generate_v1mc(),
     user_id                 UUID        NOT NULL,
     username                TEXT        NOT NULL        UNIQUE,
     date_created            TIMESTAMP   NOT NULL,
@@ -33,7 +33,7 @@ CREATE TABLE twitter_accounts
 
 CREATE TABLE tweets
 (
-    id                      UUID        PRIMARY KEY     DEFAULT uuid_generate_v4(),
+    id                      UUID        PRIMARY KEY     DEFAULT uuid_generate_v1mc(),
     twitter_account_id      UUID        NOT NULL,
     tweet                   TEXT        NOT NULL,
     post_on                 TIMESTAMP   NOT NULL,
