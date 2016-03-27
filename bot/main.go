@@ -1,26 +1,13 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"sync"
 	"time"
 )
-
-type configuration struct {
-	TwitterAuth twitterAuth `json:"twitterAuth"`
-}
-
-type twitterAuth struct {
-	ConsumerKey       string `json:"consumerKey"`
-	ConsumerSecret    string `json:"consumerSecret"`
-	AccessToken       string `json:"accessToken"`
-	AccessTokenSecret string `json:"accessTokenSecret"`
-}
 
 var configFile = flag.String("config", "config.json", "path to config file")
 var dataFile = flag.String("data", "tweets.json", "path to json file containing tweets")
@@ -45,16 +32,9 @@ func main() {
 
 	flag.Parse()
 
-	var config configuration
-
-	file, err := os.Open(*configFile)
+	config, err := loadConfig(*configFile)
 	if err != nil {
-		fatalErr = fmt.Errorf("can't open %s: %s", *configFile, err)
-		return
-	}
-
-	if err := json.NewDecoder(file).Decode(&config); err != nil {
-		fatalErr = fmt.Errorf("can't decode %s: %s", *configFile, err)
+		fatalErr = err
 		return
 	}
 
