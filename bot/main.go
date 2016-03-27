@@ -25,6 +25,7 @@ type twitterAuth struct {
 var configFile = flag.String("config", "config.json", "path to config file")
 var dataFile = flag.String("data", "tweets.json", "path to json file containing tweets")
 var addr = flag.String("addr", "localhost:7000", "Address to run server on")
+var start = flag.Bool("start", false, "start the service immediately on launch")
 
 var (
 	ticker   *time.Ticker
@@ -71,41 +72,12 @@ func main() {
 	})
 
 	mux.HandleFunc("/start", func(res http.ResponseWriter, req *http.Request) {
-		tickLock.Lock()
-		defer tickLock.Unlock()
-
-		if !running {
-			ticker = time.NewTicker(time.Second * 10)
-			running = true
-
-			go func() {
-				for {
-					select {
-					case <-ticker.C:
-						fatalErr := postNextTweet(config)
-						if fatalErr != nil {
-							panic(fatalErr)
-						}
-					case <-stop:
-						return
-					}
-				}
-			}()
-		}
-
+		startTicker(config)
 		fmt.Fprint(res, "Started\n")
 	})
 
 	mux.HandleFunc("/stop", func(res http.ResponseWriter, req *http.Request) {
-		tickLock.Lock()
-		defer tickLock.Unlock()
-
-		if running {
-			ticker.Stop()
-			stop <- true
-			running = false
-		}
-
+		stopTicker()
 		fmt.Fprint(res, "Stopped\n")
 	})
 
@@ -114,8 +86,47 @@ func main() {
 		Handler: mux,
 	}
 
+	if *start {
+		startTicker(config)
+	}
+
 	log.Printf("Go Twitter Bot Server is running on %s...\n\n", *addr)
 	server.ListenAndServe()
+}
+
+func startTicker(config configuration) {
+	tickLock.Lock()
+	defer tickLock.Unlock()
+
+	if !running {
+		ticker = time.NewTicker(time.Second * 10)
+		running = true
+
+		go func() {
+			for {
+				select {
+				case <-ticker.C:
+					fatalErr := postNextTweet(config)
+					if fatalErr != nil {
+						panic(fatalErr)
+					}
+				case <-stop:
+					return
+				}
+			}
+		}()
+	}
+}
+
+func stopTicker() {
+	tickLock.Lock()
+	defer tickLock.Unlock()
+
+	if running {
+		ticker.Stop()
+		stop <- true
+		running = false
+	}
 }
 
 func postNextTweet(config configuration) error {
