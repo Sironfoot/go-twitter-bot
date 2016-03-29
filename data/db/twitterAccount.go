@@ -1,6 +1,9 @@
 package db
 
-import "time"
+import (
+	"database/sql"
+	"time"
+)
 
 // TwitterAccount maps to twitter_accounts table
 type TwitterAccount struct {
@@ -57,6 +60,46 @@ func (account *TwitterAccount) Save() error {
 func (account *TwitterAccount) Delete() error {
 	_, err := db.Exec("DELETE FROM twitter_accounts WHERE id = $1", account.id)
 	return err
+}
+
+// TwitterAccountFromID returns a TwitterAccount record with given ID
+func TwitterAccountFromID(id string) (TwitterAccount, error) {
+	var account TwitterAccount
+
+	err := db.QueryRow("SELECT user_id, username, date_created, consumer_key, consumer_secret, access_token, access_token_secret FROM twitter_accounts WHERE id = $1", id).
+		Scan(&account.UserID, &account.Username, &account.DateCreated, &account.ConsumerKey, &account.ConsumerSecret, &account.AccessToken, &account.AccessTokenSecret)
+	if err == sql.ErrNoRows {
+		return account, ErrEntityNotFound
+	} else if err != nil {
+		return account, err
+	}
+
+	account.id = id
+	return account, nil
+}
+
+// TwitterAccountsAll returns all TwitterAccount records from the database
+func TwitterAccountsAll() ([]TwitterAccount, error) {
+	var accounts []TwitterAccount
+
+	rows, err := db.Query("SELECT id, user_id, username, date_created, consumer_key, consumer_secret, access_token, access_token_secret FROM twitter_accounts")
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		account := TwitterAccount{}
+		err = rows.Scan(&account.id, &account.UserID, &account.Username, &account.DateCreated, &account.ConsumerKey, &account.ConsumerSecret, &account.AccessToken, &account.AccessTokenSecret)
+		if err != nil {
+			return nil, err
+		}
+
+		accounts = append(accounts, account)
+	}
+
+	return accounts, nil
 }
 
 // Tweet maps to tweets table

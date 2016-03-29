@@ -1,6 +1,9 @@
 package db
 
-import "time"
+import (
+	"database/sql"
+	"time"
+)
 
 // User maps to users table
 type User struct {
@@ -54,4 +57,59 @@ func (user *User) Save() error {
 func (user *User) Delete() error {
 	_, err := db.Exec("DELETE FROM users WHERE id = $1", user.id)
 	return err
+}
+
+// UserFromID returns a User record with given ID
+func UserFromID(id string) (User, error) {
+	var user User
+
+	err := db.QueryRow("SELECT email, hashed_password, is_admin, date_created FROM users WHERE id = $1", id).
+		Scan(&user.Email, &user.HashedPassword, &user.IsAdmin, &user.DateCreated)
+	if err == sql.ErrNoRows {
+		return user, ErrEntityNotFound
+	} else if err != nil {
+		return user, err
+	}
+
+	user.id = id
+	return user, nil
+}
+
+// UserFromEmail returns the User record matching an email address
+func UserFromEmail(email string) (User, error) {
+	var user User
+
+	err := db.QueryRow("SELECT id, email, hashed_password, is_admin, date_created FROM users WHERE email = $1", email).
+		Scan(&user.id, &user.Email, &user.HashedPassword, &user.IsAdmin, &user.DateCreated)
+	if err == sql.ErrNoRows {
+		return user, ErrEntityNotFound
+	} else if err != nil {
+		return user, err
+	}
+
+	return user, nil
+}
+
+// UsersAll returns all User records from the database
+func UsersAll() ([]User, error) {
+	var users []User
+
+	rows, err := db.Query("SELECT id, email, hashed_password, is_admin, date_created FROM users ORDER BY date_created ASC")
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		user := User{}
+		err = rows.Scan(&user.id, &user.Email, &user.HashedPassword, &user.IsAdmin, &user.DateCreated)
+		if err != nil {
+			return nil, err
+		}
+
+		users = append(users, user)
+	}
+
+	return users, nil
 }
