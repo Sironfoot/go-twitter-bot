@@ -30,13 +30,14 @@ func (tweet *Tweet) IsTransient() bool {
 func (tweet *Tweet) Save() error {
 	if tweet.IsTransient() {
 		if tweet.Account == nil {
-			return fmt.Errorf("Parent TwitterAccount entity must be set")
+			return fmt.Errorf("Parent TwitterAccount entity (Account field) must be set")
 		}
 
-		sql := "INSERT INTO tweets(twitter_acount_id, tweet, post_on, is_posted, date_created) " +
-			"VALUES($1, $2, $3, $4, $5) RETURNING id"
+		cmd := `INSERT INTO tweets(twitter_acount_id, tweet, post_on, is_posted, date_created)
+		        VALUES($1, $2, $3, $4, $5)
+                RETURNING id`
 
-		statement, err := db.Prepare(sql)
+		statement, err := db.Prepare(cmd)
 		if err != nil {
 			return err
 		}
@@ -49,8 +50,11 @@ func (tweet *Tweet) Save() error {
 			return err
 		}
 	} else {
-		_, err := db.Exec("UPDATE tweets SET tweet = $2, post_on = $3, is_posted = $4, date_created = $5 WHERE id = $1",
-			tweet.id, tweet.Tweet, tweet.PostOn, tweet.IsPosted, tweet.DateCreated)
+		cmd := `UPDATE tweets
+		        SET tweet = $2, post_on = $3, is_posted = $4, date_created = $5
+			    WHERE id = $1`
+
+		_, err := db.Exec(cmd, tweet.id, tweet.Tweet, tweet.PostOn, tweet.IsPosted, tweet.DateCreated)
 		if err != nil {
 			return err
 		}
@@ -61,6 +65,9 @@ func (tweet *Tweet) Save() error {
 
 // Delete deletes the Tweet from the database
 func (tweet *Tweet) Delete() error {
-	_, err := db.Exec("DELETE FROM tweets WHERE id = $1", tweet.id)
+	cmd := `DELETE FROM tweets
+		    WHERE id = $1`
+
+	_, err := db.Exec(cmd, tweet.id)
 	return err
 }

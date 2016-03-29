@@ -28,9 +28,11 @@ func (user *User) IsTransient() bool {
 // Save saves the User struct to the database.
 func (user *User) Save() error {
 	if user.IsTransient() {
-		sql := "INSERT INTO users(email, hashed_password, is_admin, date_created) VALUES($1, $2, $3, $4) RETURNING id"
+		cmd := `INSERT INTO users(email, hashed_password, is_admin, date_created)
+				VALUES($1, $2, $3, $4)
+				RETURNING id`
 
-		statement, err := db.Prepare(sql)
+		statement, err := db.Prepare(cmd)
 		if err != nil {
 			return err
 		}
@@ -43,8 +45,11 @@ func (user *User) Save() error {
 			return err
 		}
 	} else {
-		_, err := db.Exec("UPDATE users SET email = $2, hashed_password = $3 is_admin = $4, date_created = $5 WHERE id = $1",
-			user.id, user.HashedPassword, user.Email, user.IsAdmin, user.DateCreated)
+		cmd := `UPDATE users
+				SET email = $2, hashed_password = $3 is_admin = $4, date_created = $5
+				WHERE id = $1`
+
+		_, err := db.Exec(cmd, user.id, user.HashedPassword, user.Email, user.IsAdmin, user.DateCreated)
 		if err != nil {
 			return err
 		}
@@ -55,7 +60,10 @@ func (user *User) Save() error {
 
 // Delete deletes the User from the database
 func (user *User) Delete() error {
-	_, err := db.Exec("DELETE FROM users WHERE id = $1", user.id)
+	cmd := `DELETE FROM users
+			WHERE id = $1`
+
+	_, err := db.Exec(cmd, user.id)
 	return err
 }
 
@@ -63,7 +71,11 @@ func (user *User) Delete() error {
 func UserFromID(id string) (User, error) {
 	var user User
 
-	err := db.QueryRow("SELECT email, hashed_password, is_admin, date_created FROM users WHERE id = $1", id).
+	cmd := `SELECT email, hashed_password, is_admin, date_created
+			FROM users
+			WHERE id = $1`
+
+	err := db.QueryRow(cmd, id).
 		Scan(&user.Email, &user.HashedPassword, &user.IsAdmin, &user.DateCreated)
 	if err == sql.ErrNoRows {
 		return user, ErrEntityNotFound
@@ -79,7 +91,11 @@ func UserFromID(id string) (User, error) {
 func UserFromEmail(email string) (User, error) {
 	var user User
 
-	err := db.QueryRow("SELECT id, email, hashed_password, is_admin, date_created FROM users WHERE email = $1", email).
+	cmd := `SELECT id, email, hashed_password, is_admin, date_created
+			FROM users
+			WHERE email = $1`
+
+	err := db.QueryRow(cmd, email).
 		Scan(&user.id, &user.Email, &user.HashedPassword, &user.IsAdmin, &user.DateCreated)
 	if err == sql.ErrNoRows {
 		return user, ErrEntityNotFound
@@ -94,7 +110,11 @@ func UserFromEmail(email string) (User, error) {
 func UsersAll() ([]User, error) {
 	var users []User
 
-	rows, err := db.Query("SELECT id, email, hashed_password, is_admin, date_created FROM users ORDER BY date_created ASC")
+	cmd := `SELECT id, email, hashed_password, is_admin, date_created
+			FROM users
+			ORDER BY date_created ASC`
+
+	rows, err := db.Query(cmd)
 	if err != nil {
 		return nil, err
 	}

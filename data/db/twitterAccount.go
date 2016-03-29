@@ -31,23 +31,58 @@ func (account *TwitterAccount) IsTransient() bool {
 // Save saves the TwitterAccount struct to the database.
 func (account *TwitterAccount) Save() error {
 	if account.IsTransient() {
-		sql := "INSERT INTO twitter_accounts(user_id, username, date_created, consumer_key, consumer_secret, access_token, access_token_secret) VALUES($1, $2, $3, $4, $5, $6, $7) RETURNING id"
+		cmd := `INSERT INTO twitter_accounts
+				(
+					user_id,
+					username,
+					date_created,
+					consumer_key,
+					consumer_secret,
+					access_token,
+					access_token_secret
+				)
+				VALUES($1, $2, $3, $4, $5, $6, $7)
+				RETURNING id`
 
-		statement, err := db.Prepare(sql)
+		statement, err := db.Prepare(cmd)
 		if err != nil {
 			return err
 		}
 		defer statement.Close()
 
 		err = statement.
-			QueryRow(account.UserID, account.Username, account.DateCreated, account.ConsumerKey, account.ConsumerSecret, account.AccessToken, account.AccessTokenSecret).
+			QueryRow(
+				account.UserID,
+				account.Username,
+				account.DateCreated,
+				account.ConsumerKey,
+				account.ConsumerSecret,
+				account.AccessToken,
+				account.AccessTokenSecret).
 			Scan(&account.id)
 		if err != nil {
 			return err
 		}
 	} else {
-		_, err := db.Exec("UPDATE twitter_accounts SET user_id = $2, username = $3 date_created = $4, consumer_key = $5, consumer_secret = $6, access_token = $7, access_token_secret = $8 WHERE id = $1",
-			account.id, account.UserID, account.Username, account.DateCreated, account.ConsumerKey, account.ConsumerSecret, account.AccessToken, account.AccessTokenSecret)
+		cmd := `UPDATE twitter_accounts
+				SET user_id = $2,
+					username = $3,
+					date_created = $4,
+					consumer_key = $5,
+					consumer_secret = $6,
+					access_token = $7,
+					access_token_secret = $8
+				WHERE id = $1`
+
+		_, err := db.Exec(cmd,
+			account.id,
+			account.UserID,
+			account.Username,
+			account.DateCreated,
+			account.ConsumerKey,
+			account.ConsumerSecret,
+			account.AccessToken,
+			account.AccessTokenSecret)
 		if err != nil {
 			return err
 		}
@@ -58,7 +93,10 @@ func (account *TwitterAccount) Save() error {
 
 // Delete deletes the TwitterAccount from the database
 func (account *TwitterAccount) Delete() error {
-	_, err := db.Exec("DELETE FROM twitter_accounts WHERE id = $1", account.id)
+	cmd := `DELETE FROM twitter_accounts
+			WHERE id = $1`
+
+	_, err := db.Exec(cmd, account.id)
 	return err
 }
 
@@ -66,8 +104,25 @@ func (account *TwitterAccount) Delete() error {
 func TwitterAccountFromID(id string) (TwitterAccount, error) {
 	var account TwitterAccount
 
-	err := db.QueryRow("SELECT user_id, username, date_created, consumer_key, consumer_secret, access_token, access_token_secret FROM twitter_accounts WHERE id = $1", id).
-		Scan(&account.UserID, &account.Username, &account.DateCreated, &account.ConsumerKey, &account.ConsumerSecret, &account.AccessToken, &account.AccessTokenSecret)
+	cmd := `SELECT
+				user_id,
+				username,
+				date_created,
+				consumer_key,
+				consumer_secret,
+				access_token,
+				access_token_secret
+			FROM twitter_accounts
+			WHERE id = $1`
+
+	err := db.QueryRow(cmd, id).
+		Scan(&account.UserID,
+			&account.Username,
+			&account.DateCreated,
+			&account.ConsumerKey,
+			&account.ConsumerSecret,
+			&account.AccessToken,
+			&account.AccessTokenSecret)
 	if err == sql.ErrNoRows {
 		return account, ErrEntityNotFound
 	} else if err != nil {
@@ -82,7 +137,18 @@ func TwitterAccountFromID(id string) (TwitterAccount, error) {
 func TwitterAccountsAll() ([]TwitterAccount, error) {
 	var accounts []TwitterAccount
 
-	rows, err := db.Query("SELECT id, user_id, username, date_created, consumer_key, consumer_secret, access_token, access_token_secret FROM twitter_accounts")
+	cmd := `SELECT
+				id,
+				user_id,
+				username,
+				date_created,
+				consumer_key,
+				consumer_secret,
+				access_token,
+				access_token_secret
+			FROM twitter_accounts`
+
+	rows, err := db.Query(cmd)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +157,16 @@ func TwitterAccountsAll() ([]TwitterAccount, error) {
 
 	for rows.Next() {
 		account := TwitterAccount{}
-		err = rows.Scan(&account.id, &account.UserID, &account.Username, &account.DateCreated, &account.ConsumerKey, &account.ConsumerSecret, &account.AccessToken, &account.AccessTokenSecret)
+		err = rows.Scan(
+			&account.id,
+			&account.UserID,
+			&account.Username,
+			&account.DateCreated,
+			&account.ConsumerKey,
+			&account.ConsumerSecret,
+			&account.AccessToken,
+			&account.AccessTokenSecret)
+
 		if err != nil {
 			return nil, err
 		}
@@ -107,14 +182,24 @@ func (account *TwitterAccount) GetTweets() ([]Tweet, error) {
 	var tweets []Tweet
 
 	if !account.IsTransient() {
-		rows, err := db.Query("SELECT id, tweet, post_on, is_posted, date_created FROM tweets WHERE twitter_account_id = $1", account.id)
+		cmd := `SELECT id, tweet, post_on, is_posted, date_created
+				FROM tweets
+				WHERE twitter_account_id = $1`
+
+		rows, err := db.Query(cmd, account.id)
 		if err != nil {
 			return tweets, err
 		}
 
 		for rows.Next() {
 			tweet := Tweet{Account: account}
-			err = rows.Scan(&tweet.id, &tweet.Tweet, &tweet.PostOn, &tweet.IsPosted, &tweet.DateCreated)
+			err = rows.Scan(
+				&tweet.id,
+				&tweet.Tweet,
+				&tweet.PostOn,
+				&tweet.IsPosted,
+				&tweet.DateCreated)
+
 			if err != nil {
 				return tweets, err
 			}
