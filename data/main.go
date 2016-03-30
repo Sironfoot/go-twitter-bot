@@ -14,26 +14,35 @@ import (
 
 var addr = flag.String("addr", "localhost:7001", "Address to run server on")
 
+// User model returned by REST API
+type User struct {
+	ID             string    `json:"id"`
+	Email          string    `json:"email"`
+	HashedPassword string    `json:"hasedPassword"`
+	IsAdmin        bool      `json:"isAdmin"`
+	DateCreated    time.Time `json:"dateCreated"`
+}
+
 // TwitterAccount model returned by REST API
 type TwitterAccount struct {
-	ID                string
-	UserID            string
-	Username          string
-	DateCreated       time.Time
-	ConsumerKey       string
-	ConsumerSecret    string
-	AccessToken       string
-	AccessTokenSecret string
+	ID                string    `json:"id"`
+	UserID            string    `json:"userId"`
+	Username          string    `json:"username"`
+	DateCreated       time.Time `json:"dateCreated"`
+	ConsumerKey       string    `json:"consumerKey"`
+	ConsumerSecret    string    `json:"consumerSecret"`
+	AccessToken       string    `json:"accessToken"`
+	AccessTokenSecret string    `json:"accessTokenSecret"`
 
-	Tweets []Tweet
+	Tweets []Tweet `json:"tweets"`
 }
 
 // Tweet model returned by REST API
 type Tweet struct {
-	ID       string
-	Text     string
-	PostOn   time.Time
-	IsPosted bool
+	ID       string    `json:"id"`
+	Text     string    `json:"text"`
+	PostOn   time.Time `json:"postOn"`
+	IsPosted bool      `json:"isPosted"`
 }
 
 func main() {
@@ -47,12 +56,25 @@ func main() {
 	})
 
 	router.HandleFunc("/users", func(res http.ResponseWriter, req *http.Request) {
-		users, err := db.UsersAll()
+		usersDB, err := db.UsersAll()
 		if err != nil {
 			panic(err)
 		}
 
-		data, err := json.MarshalIndent(users, "", "\t")
+		var users []User
+		for _, userDB := range usersDB {
+			user := User{
+				ID:             userDB.ID(),
+				Email:          userDB.Email,
+				HashedPassword: userDB.HashedPassword,
+				IsAdmin:        userDB.IsAdmin,
+				DateCreated:    userDB.DateCreated,
+			}
+
+			users = append(users, user)
+		}
+
+		data, err := json.MarshalIndent(users, "", "    ")
 		if err != nil {
 			panic(err)
 		}
@@ -98,7 +120,7 @@ func main() {
 			accounts = append(accounts, account)
 		}
 
-		data, err := json.MarshalIndent(accounts, "", "\t")
+		data, err := json.MarshalIndent(accounts, "", "    ")
 		if err != nil {
 			panic(err)
 		}
