@@ -27,3 +27,4 @@ config.*.json
 
 # Compiled Binaries
 /bot/bot
+/data/data
