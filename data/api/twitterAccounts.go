@@ -2,9 +2,11 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/sironfoot/go-twitter-bot/data/db"
 )
 
@@ -75,4 +77,61 @@ func GetTwitterAccounts(res http.ResponseWriter, req *http.Request) {
 
 	res.Header().Set("Content-Type", "application/json")
 	res.Write(data)
+}
+
+// GetTwitterAccount = GET: /twitterAccount/{twitterAccountID}
+func GetTwitterAccount(res http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	twitterAccountID := vars["twitterAccountID"]
+
+	model := struct {
+		Message        string         `json:"message"`
+		TwitterAccount TwitterAccount `json:"TwitterAccount"`
+	}{}
+
+	res.Header().Set("Content-Type", "application/json")
+
+	defer func() {
+		data, err := json.MarshalIndent(model, "", "    ")
+		if err != nil {
+			panic(err)
+		}
+
+		res.Write(data)
+	}()
+
+	account, err := db.TwitterAccountFromID(twitterAccountID)
+	if err == db.ErrEntityNotFound {
+		model.Message = fmt.Sprintf("TwitterAccount not found on ID: %s", twitterAccountID)
+		res.WriteHeader(http.StatusNotFound)
+		return
+	} else if err != nil {
+		panic(err)
+	}
+
+	model.Message = "OK"
+	model.TwitterAccount = TwitterAccount{
+		ID:                account.ID(),
+		UserID:            account.UserID,
+		Username:          account.Username,
+		DateCreated:       account.DateCreated,
+		ConsumerKey:       account.ConsumerKey,
+		ConsumerSecret:    account.ConsumerSecret,
+		AccessToken:       account.AccessToken,
+		AccessTokenSecret: account.AccessTokenSecret,
+	}
+
+	tweets, err := account.GetTweets()
+	if err != nil {
+		panic(err)
+	}
+
+	for _, tweet := range tweets {
+		model.TwitterAccount.Tweets = append(model.TwitterAccount.Tweets, Tweet{
+			ID:       tweet.ID(),
+			Text:     tweet.Tweet,
+			PostOn:   tweet.PostOn,
+			IsPosted: tweet.IsPosted,
+		})
+	}
 }

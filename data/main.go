@@ -27,8 +27,15 @@ func main() {
 		fmt.Fprintf(res, "Hello from GoBot Data server\n")
 	})
 
-	router.HandleFunc("/users", api.GetUsers)
-	router.HandleFunc("/twitterAccounts", api.GetTwitterAccounts)
+	router.HandleFunc("/users", api.GetUsers).
+		Methods("GET")
+	router.HandleFunc("/users/{userID}", api.GetUser).
+		Methods("GET")
+
+	router.HandleFunc("/twitterAccounts", api.GetTwitterAccounts).
+		Methods("GET")
+	router.HandleFunc("/twitterAccounts/{twitterAccountID}", api.GetTwitterAccount).
+		Methods("GET")
 
 	server := http.Server{
 		Addr:    *addr,

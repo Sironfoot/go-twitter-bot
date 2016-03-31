@@ -2,9 +2,11 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/sironfoot/go-twitter-bot/data/db"
 )
 
@@ -46,12 +48,42 @@ func GetUsers(res http.ResponseWriter, req *http.Request) {
 	res.Write(data)
 }
 
-// func GetUser(res http.ResponseWriter, req *http.Request) {
-// 	vars := mux.Vars(req)
-// 	userId := vars["userId"]
-//
-//     user, err := db.UserFromID(userId)
-//     if err == db.ErrEntityNotFound {
-//
-//     }
-// }
+// GetUser = GET: /users/[userID]
+func GetUser(res http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	userID := vars["userID"]
+
+	model := struct {
+		Message string `json:"message"`
+		User    User   `json:"user"`
+	}{}
+
+	res.Header().Set("Content-Type", "application/json")
+
+	defer func() {
+		data, err := json.MarshalIndent(model, "", "   ")
+		if err != nil {
+			panic(err)
+		}
+
+		res.Write(data)
+	}()
+
+	user, err := db.UserFromID(userID)
+	if err == db.ErrEntityNotFound {
+		model.Message = fmt.Sprintf("User not found on ID: %s", userID)
+		res.WriteHeader(http.StatusNotFound)
+		return
+	} else if err != nil {
+		panic(err)
+	}
+
+	model.Message = "OK"
+	model.User = User{
+		ID:             user.ID(),
+		Email:          user.Email,
+		HashedPassword: user.HashedPassword,
+		IsAdmin:        user.IsAdmin,
+		DateCreated:    user.DateCreated,
+	}
+}
