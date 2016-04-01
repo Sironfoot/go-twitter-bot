@@ -29,8 +29,12 @@ func main() {
 
 	router.HandleFunc("/users", api.GetUsers).
 		Methods("GET")
+	router.HandleFunc("/users", api.CreateUser).
+		Methods("POST")
 	router.HandleFunc("/users/{userID}", api.GetUser).
 		Methods("GET")
+	router.HandleFunc("/users/{userID}", api.UpdateUser).
+		Methods("PUT")
 
 	router.HandleFunc("/twitterAccounts", api.GetTwitterAccounts).
 		Methods("GET")
