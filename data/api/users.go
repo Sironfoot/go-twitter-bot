@@ -4,12 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"regexp"
-	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/sironfoot/go-twitter-bot/data/db"
+	"github.com/sironfoot/go-twitter-bot/data/models"
 )
 
 // User model returned by REST API
@@ -90,18 +89,9 @@ func GetUser(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-type validationError struct {
-	FieldName string `json:"fieldName"`
-	Message   string `json:"message"`
-}
-
 // CreateUser = POST: /users
 func CreateUser(res http.ResponseWriter, req *http.Request) {
-	newUser := struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-		IsAdmin  bool   `json:"isAdmin"`
-	}{}
+	var newUser models.User
 
 	err := json.NewDecoder(req.Body).Decode(&newUser)
 	if err != nil {
@@ -111,32 +101,14 @@ func CreateUser(res http.ResponseWriter, req *http.Request) {
 
 	res.Header().Set("Content-Type", "application/json")
 
-	var validationErrors []validationError
-
-	if strings.TrimSpace(newUser.Email) == "" {
-		validationErrors = append(validationErrors, validationError{
-			FieldName: "email",
-			Message:   "'email' address is required.",
-		})
-	}
-
-	if regexp.MustCompile(".+@.+\\.[a-z]+").MatchString(newUser.Email) {
-		validationErrors = append(validationErrors, validationError{
-			FieldName: "email",
-			Message:   "'email' is not a valid email address.",
-		})
-	}
-
-	if strings.TrimSpace(newUser.Password) == "" {
-		validationErrors = append(validationErrors, validationError{
-			FieldName: "password",
-			Message:   "'password' is required.",
-		})
+	validationErrors, err := newUser.ValidateCreate()
+	if err != nil {
+		panic(err)
 	}
 
 	model := struct {
-		Message string            `json:"message"`
-		Errors  []validationError `json:"errors"`
+		Message string                   `json:"message"`
+		Errors  []models.ValidationError `json:"errors"`
 	}{}
 
 	if len(validationErrors) > 0 {
@@ -158,11 +130,7 @@ func CreateUser(res http.ResponseWriter, req *http.Request) {
 
 // UpdateUser = PUT: /users/{userID}
 func UpdateUser(res http.ResponseWriter, req *http.Request) {
-	updateUser := struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-		IsAdmin  bool   `json:"isAdmin"`
-	}{}
+	var updateUser models.User
 
 	err := json.NewDecoder(req.Body).Decode(&updateUser)
 	if err != nil {
@@ -173,11 +141,12 @@ func UpdateUser(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	userID := vars["userID"]
 
-	model := struct {
-		Message string `json:"message"`
-	}{}
-
 	res.Header().Set("Content-Type", "application/json")
+
+	model := struct {
+		Message string                   `json:"message"`
+		Errors  []models.ValidationError `json:"errors"`
+	}{}
 
 	defer func() {
 		data, err := json.MarshalIndent(model, "", "   ")
@@ -197,6 +166,15 @@ func UpdateUser(res http.ResponseWriter, req *http.Request) {
 		panic(err)
 	}
 
+	validationErrors, err := updateUser.ValidateUpdate(userID)
+
+	if len(validationErrors) > 0 {
+		model.Message = "User model is invalid."
+		model.Errors = validationErrors
+		res.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	user.Email = updateUser.Email
 	user.HashedPassword = updateUser.Password
 	user.IsAdmin = updateUser.IsAdmin
@@ -206,3 +184,5 @@ func UpdateUser(res http.ResponseWriter, req *http.Request) {
 		panic(err)
 	}
 }
+
+// 205
