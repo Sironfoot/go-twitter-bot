@@ -15,6 +15,11 @@ func InitDB(connectionString string) (err error) {
 	return
 }
 
+// CloseDB closes the database
+func CloseDB() error {
+	return db.Close()
+}
+
 // Entity represents interface that all database mapped structs implement
 type Entity interface {
 	ID() string
