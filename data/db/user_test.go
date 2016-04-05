@@ -82,6 +82,12 @@ func TestUserFromID(t *testing.T) {
 		return
 	}
 
+	defer func() {
+		if err := tearDown(); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
 	// arrange (add test record)
 	createSQL := `INSERT INTO users(email, hashed_password, is_admin, date_created)
                   VALUES($1, $2, $3, $4)
@@ -144,14 +150,68 @@ func TestUserFromID(t *testing.T) {
 	if user.ID() != id || user.Email != email || user.IsAdmin != isAdmin || user.DateCreated.Equal(dateCreated) {
 		t.Errorf("Expected user and actual user don't match")
 	}
+}
 
-	// cleanup
-	_, err = testDB.Exec("DELETE FROM users WHERE id = $1", id)
+func TestUserFromEmail(t *testing.T) {
+	if err := setUp(); err != nil {
+		t.Fatal(err)
+	}
+
+	defer func() {
+		if err := tearDown(); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	// arrange (add test record)
+	createSQL := `INSERT INTO users(email, hashed_password, is_admin, date_created)
+                  VALUES($1, $2, $3, $4)
+                  RETURNING id`
+
+	statement, err := testDB.Prepare(createSQL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer statement.Close()
+
+	var id string
+	email := "test@example.com"
+	hashedPassword := "Password1"
+	isAdmin := true
+	dateCreated := time.Now()
+
+	err = statement.
+		QueryRow(email, hashedPassword, isAdmin, dateCreated).
+		Scan(&id)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := tearDown(); err != nil {
+	// Non-existent record
+	// act
+	user, err := db.UserFromEmail("Nonsense@example.com")
+	if err != nil && err != db.ErrEntityNotFound {
 		t.Fatal(err)
+	}
+
+	// assert
+	if err != db.ErrEntityNotFound {
+		t.Errorf("user entity was returned from non-existent email address, userEmail: %s", user.Email)
+	}
+
+	// Existing record
+	// act
+	user, err = db.UserFromEmail(email)
+	if err != nil && err != db.ErrEntityNotFound {
+		t.Fatal(err)
+	}
+
+	// assert
+	if err == db.ErrEntityNotFound {
+		t.Errorf("Expected user record, but got ErrEntityNotFound")
+	}
+
+	if user.ID() != id || user.Email != email || user.IsAdmin != isAdmin || user.DateCreated.Equal(dateCreated) {
+		t.Errorf("Expected user and actual user don't match")
 	}
 }
