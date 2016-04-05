@@ -76,6 +76,34 @@ func tearDown() error {
 	return nil
 }
 
+func createTestUser() (user db.User, id string, err error) {
+	user = db.User{
+		Email:          "test@example.com",
+		HashedPassword: "Password1",
+		IsAdmin:        true,
+		DateCreated:    time.Now(),
+	}
+
+	createSQL := `INSERT INTO users(email, hashed_password, is_admin, date_created)
+                  VALUES($1, $2, $3, $4)
+                  RETURNING id`
+
+	statement, err := testDB.Prepare(createSQL)
+	if err != nil {
+		return
+	}
+	defer statement.Close()
+
+	err = statement.
+		QueryRow(user.Email, user.HashedPassword, user.IsAdmin, user.DateCreated).
+		Scan(&id)
+	if err != nil {
+		return
+	}
+
+	return
+}
+
 func TestUserFromID(t *testing.T) {
 	if err := setUp(); err != nil {
 		t.Fatal(err)
@@ -88,29 +116,8 @@ func TestUserFromID(t *testing.T) {
 		}
 	}()
 
-	// arrange (add test record)
-	createSQL := `INSERT INTO users(email, hashed_password, is_admin, date_created)
-                  VALUES($1, $2, $3, $4)
-                  RETURNING id`
-
-	statement, err := testDB.Prepare(createSQL)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer statement.Close()
-
-	var id string
-	email := "test@example.com"
-	hashedPassword := "Password1"
-	isAdmin := true
-	dateCreated := time.Now()
-
-	err = statement.
-		QueryRow(email, hashedPassword, isAdmin, dateCreated).
-		Scan(&id)
-	if err != nil {
-		t.Fatal(err)
-	}
+	// arrange
+	testUser, id, err := createTestUser()
 
 	// Non-existent record - Valid UUID
 	// act
@@ -147,7 +154,11 @@ func TestUserFromID(t *testing.T) {
 		t.Errorf("Expected user record, but got ErrEntityNotFound")
 	}
 
-	if user.ID() != id || user.Email != email || user.IsAdmin != isAdmin || user.DateCreated.Equal(dateCreated) {
+	if user.ID() != id ||
+		user.Email != testUser.Email ||
+		user.IsAdmin != testUser.IsAdmin ||
+		user.DateCreated.Equal(testUser.DateCreated) {
+
 		t.Errorf("Expected user and actual user don't match")
 	}
 }
@@ -163,29 +174,8 @@ func TestUserFromEmail(t *testing.T) {
 		}
 	}()
 
-	// arrange (add test record)
-	createSQL := `INSERT INTO users(email, hashed_password, is_admin, date_created)
-                  VALUES($1, $2, $3, $4)
-                  RETURNING id`
-
-	statement, err := testDB.Prepare(createSQL)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer statement.Close()
-
-	var id string
-	email := "test@example.com"
-	hashedPassword := "Password1"
-	isAdmin := true
-	dateCreated := time.Now()
-
-	err = statement.
-		QueryRow(email, hashedPassword, isAdmin, dateCreated).
-		Scan(&id)
-	if err != nil {
-		t.Fatal(err)
-	}
+	// arrange
+	testUser, id, err := createTestUser()
 
 	// Non-existent record
 	// act
@@ -201,7 +191,7 @@ func TestUserFromEmail(t *testing.T) {
 
 	// Existing record
 	// act
-	user, err = db.UserFromEmail(email)
+	user, err = db.UserFromEmail(testUser.Email)
 	if err != nil && err != db.ErrEntityNotFound {
 		t.Fatal(err)
 	}
@@ -211,7 +201,11 @@ func TestUserFromEmail(t *testing.T) {
 		t.Errorf("Expected user record, but got ErrEntityNotFound")
 	}
 
-	if user.ID() != id || user.Email != email || user.IsAdmin != isAdmin || user.DateCreated.Equal(dateCreated) {
+	if user.ID() != id ||
+		user.Email != testUser.Email ||
+		user.IsAdmin != testUser.IsAdmin ||
+		user.DateCreated.Equal(testUser.DateCreated) {
+
 		t.Errorf("Expected user and actual user don't match")
 	}
 }
