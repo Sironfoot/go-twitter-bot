@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"regexp"
 	"time"
 )
 
@@ -67,9 +68,15 @@ func (user *User) Delete() error {
 	return err
 }
 
+var isUUID = regexp.MustCompile(`(?i)^[a-f0-9]{8}\-[a-f0-9]{4}\-[a-f0-9]{4}\-[a-f0-9]{4}\-[a-f0-9]{12}$`)
+
 // UserFromID returns a User record with given ID
 func UserFromID(id string) (User, error) {
 	var user User
+
+	if !isUUID.MatchString(id) {
+		return user, ErrEntityNotFound
+	}
 
 	cmd := `SELECT email, hashed_password, is_admin, date_created
 			FROM users
@@ -119,9 +126,17 @@ func UsersAll(query QueryAll) ([]User, error) {
 
 	cmd := `SELECT id, email, hashed_password, is_admin, date_created
 			FROM users
-			ORDER BY date_created ASC`
+			ORDER BY $1
+			LIMIT $2`
 
-	rows, err := db.Query(cmd)
+	orderBy := query.OrderBy
+	if query.OrderAsc {
+		orderBy += " ASC"
+	} else {
+		orderBy += " DESC"
+	}
+
+	rows, err := db.Query(cmd, orderBy, query.Limit)
 	if err != nil {
 		return nil, err
 	}
