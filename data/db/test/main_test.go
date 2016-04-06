@@ -76,8 +76,12 @@ func tearDown() error {
 }
 
 func createTestUser() (user db.User, id string, err error) {
+	return createTestUserWithEmail("test@example.com")
+}
+
+func createTestUserWithEmail(email string) (user db.User, id string, err error) {
 	user = db.User{
-		Email:          "test@example.com",
+		Email:          email,
 		HashedPassword: "Password1",
 		IsAdmin:        true,
 		DateCreated:    time.Now(),

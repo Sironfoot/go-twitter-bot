@@ -106,8 +106,15 @@ func UserFromEmail(email string) (User, error) {
 	return user, nil
 }
 
+const (
+	// UsersOrderByDateCreated is for ordering users by DateCreated
+	UsersOrderByDateCreated = "date_created"
+	// UsersOrderByEmail is for ordering users by Email address
+	UsersOrderByEmail = "email"
+)
+
 // UsersAll returns all User records from the database
-func UsersAll() ([]User, error) {
+func UsersAll(query QueryAll) ([]User, error) {
 	var users []User
 
 	cmd := `SELECT id, email, hashed_password, is_admin, date_created

@@ -34,8 +34,8 @@ var ErrEntityNotFound = errors.New("db: Entity not found")
 
 // QueryAll is a general purpose query struct for returning Entities
 type QueryAll struct {
-	startRecord int
-	endRecord   int
-	orderBy     string
-	orderAsc    bool
+	Limit    int
+	OrderBy  string
+	OrderAsc bool
+	After    interface{}
 }
