@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"errors"
+	"regexp"
 
 	_ "github.com/lib/pq" // initialise postgresql DB provider
 )
@@ -39,3 +40,5 @@ type QueryAll struct {
 	OrderAsc bool
 	After    interface{}
 }
+
+var isUUID = regexp.MustCompile(`(?i)^[a-f0-9]{8}\-[a-f0-9]{4}\-[a-f0-9]{4}\-[a-f0-9]{4}\-[a-f0-9]{12}$`)

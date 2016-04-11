@@ -2,7 +2,6 @@ package db
 
 import (
 	"database/sql"
-	"regexp"
 	"time"
 )
 
@@ -26,8 +25,8 @@ func (user *User) IsTransient() bool {
 	return len(user.id) == 0
 }
 
-// Save saves the User struct to the database.
-func (user *User) Save() error {
+// UserSave saves the User struct to the database.
+var UserSave = func(user *User) error {
 	if user.IsTransient() {
 		cmd := `INSERT INTO users(email, hashed_password, is_admin, date_created)
 				VALUES($1, $2, $3, $4)
@@ -59,8 +58,13 @@ func (user *User) Save() error {
 	return nil
 }
 
-// Delete deletes the User from the database
-func (user *User) Delete() error {
+// Save saves the User struct to the database.
+func (user *User) Save() error {
+	return UserSave(user)
+}
+
+// UserDelete deletes the User from the database
+var UserDelete = func(user *User) error {
 	cmd := `DELETE FROM users
 			WHERE id = $1`
 
@@ -68,10 +72,13 @@ func (user *User) Delete() error {
 	return err
 }
 
-var isUUID = regexp.MustCompile(`(?i)^[a-f0-9]{8}\-[a-f0-9]{4}\-[a-f0-9]{4}\-[a-f0-9]{4}\-[a-f0-9]{12}$`)
+// Delete deletes the User from the database
+func (user *User) Delete() error {
+	return UserDelete(user)
+}
 
 // UserFromID returns a User record with given ID
-func UserFromID(id string) (User, error) {
+var UserFromID = func(id string) (User, error) {
 	var user User
 
 	if !isUUID.MatchString(id) {
@@ -95,7 +102,7 @@ func UserFromID(id string) (User, error) {
 }
 
 // UserFromEmail returns the User record matching an email address
-func UserFromEmail(email string) (User, error) {
+var UserFromEmail = func(email string) (User, error) {
 	var user User
 
 	cmd := `SELECT id, email, hashed_password, is_admin, date_created
@@ -121,7 +128,7 @@ const (
 )
 
 // UsersAll returns all User records from the database
-func UsersAll(query QueryAll) ([]User, error) {
+var UsersAll = func(query QueryAll) ([]User, error) {
 	var users []User
 
 	cmd := `SELECT id, email, hashed_password, is_admin, date_created

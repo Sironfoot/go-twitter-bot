@@ -152,7 +152,7 @@ func TestUsersAll(t *testing.T) {
 	// multiple records
 	// arrange
 	for i := 1; i <= max; i++ {
-		_, _, err := createTestUserWithEmail(fmt.Sprintf("test_%d@example.com", i))
+		_, _, err = createTestUserWithEmail(fmt.Sprintf("test_%d@example.com", i))
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -26,8 +26,8 @@ func (tweet *Tweet) IsTransient() bool {
 	return len(tweet.id) == 0
 }
 
-// Save saves the Tweet struct to the database.
-func (tweet *Tweet) Save() error {
+// TweetSave saves the Tweet struct to the database.
+var TweetSave = func(tweet *Tweet) error {
 	if tweet.IsTransient() {
 		if tweet.Account == nil {
 			return fmt.Errorf("Parent TwitterAccount entity (Account field) must be set")
@@ -63,11 +63,21 @@ func (tweet *Tweet) Save() error {
 	return nil
 }
 
-// Delete deletes the Tweet from the database
-func (tweet *Tweet) Delete() error {
+// Save saves the Tweet struct to the database.
+func (tweet *Tweet) Save() error {
+	return TweetSave(tweet)
+}
+
+// TweetDelete deletes the Tweet from the database
+var TweetDelete = func(tweet *Tweet) error {
 	cmd := `DELETE FROM tweets
 		    WHERE id = $1`
 
 	_, err := db.Exec(cmd, tweet.id)
 	return err
+}
+
+// Delete deletes the Tweet from the database
+func (tweet *Tweet) Delete() error {
+	return TweetDelete(tweet)
 }

@@ -28,8 +28,8 @@ func (account *TwitterAccount) IsTransient() bool {
 	return len(account.id) == 0
 }
 
-// Save saves the TwitterAccount struct to the database.
-func (account *TwitterAccount) Save() error {
+// TwitterAccountSave saves the TwitterAccount struct to the database.
+var TwitterAccountSave = func(account *TwitterAccount) error {
 	if account.IsTransient() {
 		cmd := `INSERT INTO twitter_accounts
 				(
@@ -91,8 +91,13 @@ func (account *TwitterAccount) Save() error {
 	return nil
 }
 
-// Delete deletes the TwitterAccount from the database
-func (account *TwitterAccount) Delete() error {
+// Save saves the TwitterAccount struct to the database.
+func (account *TwitterAccount) Save() error {
+	return TwitterAccountSave(account)
+}
+
+// TwitterAccountDelete deletes the TwitterAccount from the database
+var TwitterAccountDelete = func(account *TwitterAccount) error {
 	cmd := `DELETE FROM twitter_accounts
 			WHERE id = $1`
 
@@ -100,8 +105,13 @@ func (account *TwitterAccount) Delete() error {
 	return err
 }
 
+// Delete deletes the TwitterAccount from the database
+func (account *TwitterAccount) Delete() error {
+	return TwitterAccountDelete(account)
+}
+
 // TwitterAccountFromID returns a TwitterAccount record with given ID
-func TwitterAccountFromID(id string) (TwitterAccount, error) {
+var TwitterAccountFromID = func(id string) (TwitterAccount, error) {
 	var account TwitterAccount
 
 	cmd := `SELECT
@@ -134,7 +144,7 @@ func TwitterAccountFromID(id string) (TwitterAccount, error) {
 }
 
 // TwitterAccountsAll returns all TwitterAccount records from the database
-func TwitterAccountsAll() ([]TwitterAccount, error) {
+var TwitterAccountsAll = func() ([]TwitterAccount, error) {
 	var accounts []TwitterAccount
 
 	cmd := `SELECT
@@ -177,8 +187,8 @@ func TwitterAccountsAll() ([]TwitterAccount, error) {
 	return accounts, nil
 }
 
-// GetTweets loads Tweets child entites for TwitterAccount
-func (account *TwitterAccount) GetTweets() ([]Tweet, error) {
+// TwitterAccountGetTweets loads Tweets child entites for TwitterAccount
+var TwitterAccountGetTweets = func(account *TwitterAccount) ([]Tweet, error) {
 	var tweets []Tweet
 
 	if !account.IsTransient() {
@@ -211,4 +221,9 @@ func (account *TwitterAccount) GetTweets() ([]Tweet, error) {
 	}
 
 	return tweets, nil
+}
+
+// GetTweets loads Tweets child entites for TwitterAccount
+func (account *TwitterAccount) GetTweets() ([]Tweet, error) {
+	return TwitterAccountGetTweets(account)
 }
