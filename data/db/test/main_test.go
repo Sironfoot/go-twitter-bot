@@ -10,69 +10,72 @@ import (
 
 var testDB *sql.DB
 
-func setUp() (err error) {
+func mustSetUp() {
 	tempDB, err := sql.Open("postgres", "user=postgres sslmode=disable")
 	if err != nil {
-		return err
+		panic(err)
 	}
 
 	_, err = tempDB.Exec("DROP DATABASE IF EXISTS go_twitter_bot_test;")
 	if err != nil {
-		return err
+		panic(err)
 	}
 
 	_, err = tempDB.Exec("CREATE DATABASE go_twitter_bot_test;")
 	if err != nil {
-		return err
+		panic(err)
 	}
 
 	tempDB.Close()
 
 	testDB, err = sql.Open("postgres", "user=postgres dbname=go_twitter_bot_test sslmode=disable")
 	if err != nil {
-		return err
+		panic(err)
 	}
 
 	createTables := "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";\n"
 
 	file, err := ioutil.ReadFile("../../sql/create-tables.sql")
 	if err != nil {
-		return err
+		panic(err)
 	}
 	createTables += string(file)
 
 	_, err = testDB.Exec(createTables)
 	if err != nil {
-		return err
+		panic(err)
 	}
 
-	return db.InitDB("user=postgres dbname=go_twitter_bot_test sslmode=disable")
+	err = db.InitDB("user=postgres dbname=go_twitter_bot_test sslmode=disable")
+	if err != nil {
+		panic(err)
+	}
 }
 
-func tearDown() error {
+func mustTearDown() {
 	if err := db.CloseDB(); err != nil {
-		return err
+		panic(err)
 	}
 
 	if err := testDB.Close(); err != nil {
-		return err
+		panic(err)
 	}
 
 	tempDB, err := sql.Open("postgres", "user=postgres sslmode=disable")
 	if err != nil {
-		return err
+		panic(err)
 	}
 
 	_, err = tempDB.Exec("DROP DATABASE IF EXISTS go_twitter_bot_test;")
 	if err != nil {
-		return err
+		panic(err)
 	}
 
 	if err := tempDB.Close(); err != nil {
-		return err
+		panic(err)
 	}
 
-	return nil
+	return
 }
 
 func createTestUser() (user db.User, id string, err error) {
