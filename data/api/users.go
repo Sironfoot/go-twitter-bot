@@ -22,7 +22,7 @@ type User struct {
 
 // GetUsers = GET: /users
 func GetUsers(res http.ResponseWriter, req *http.Request) {
-	usersDB, err := db.UsersAll()
+	usersDB, err := db.UsersAll(db.QueryAll{})
 	if err != nil {
 		panic(err)
 	}
@@ -149,9 +149,9 @@ func UpdateUser(res http.ResponseWriter, req *http.Request) {
 	}{}
 
 	defer func() {
-		data, err := json.MarshalIndent(model, "", "   ")
-		if err != nil {
-			panic(err)
+		data, jsonErr := json.MarshalIndent(model, "", "   ")
+		if jsonErr != nil {
+			panic(jsonErr)
 		}
 
 		res.Write(data)
