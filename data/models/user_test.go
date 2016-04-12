@@ -1,81 +1,37 @@
 package models
 
 import (
-	"database/sql"
-	"io/ioutil"
 	"testing"
+	"time"
 
 	"github.com/sironfoot/go-twitter-bot/data/db"
 )
 
-var testDB *sql.DB
+var userFromEmail func(email string) (db.User, error)
 
-func setUp() (err error) {
-	tempDB, err := sql.Open("postgres", "user=postgres sslmode=disable")
-	if err != nil {
-		return err
+func setUp() {
+	userFromEmail = db.UserFromEmail
+	db.UserFromEmail = func(email string) (db.User, error) {
+		if email == "existing@example.com" {
+			return db.User{
+				Email:          email,
+				HashedPassword: "Password1",
+				IsAdmin:        true,
+				DateCreated:    time.Now(),
+			}, nil
+		}
+
+		return db.User{}, db.ErrEntityNotFound
 	}
-
-	_, err = tempDB.Exec("DROP DATABASE IF EXISTS go_twitter_bot_test;")
-	if err != nil {
-		return err
-	}
-
-	_, err = tempDB.Exec("CREATE DATABASE go_twitter_bot_test;")
-	if err != nil {
-		return err
-	}
-
-	tempDB.Close()
-
-	testDB, err = sql.Open("postgres", "user=postgres dbname=go_twitter_bot_test sslmode=disable")
-	if err != nil {
-		return err
-	}
-
-	createTables := "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"
-
-	file, err := ioutil.ReadFile("../sql/create-tables.sql")
-	if err != nil {
-		return err
-	}
-	createTables += string(file)
-
-	_, err = testDB.Exec(createTables)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
-func tearDown() error {
-	tempDB, err := sql.Open("postgres", "user=postgres sslmode=disable")
-	if err != nil {
-		return err
-	}
-
-	_, err = tempDB.Exec("DROP DATABASE IF EXISTS go_twitter_bot_test;")
-	if err != nil {
-		return err
-	}
-
-	tempDB.Close()
-	testDB.Close()
-
-	return nil
+func tearDown() {
+	db.UserFromEmail = userFromEmail
 }
 
 func TestUserValidateCreate(t *testing.T) {
-	err := setUp()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = db.InitDB("user=postgres dbname=go_twitter_bot_test sslmode=disable")
-	if err != nil {
-		t.Fatal(err)
-	}
+	setUp()
+	defer tearDown()
 
 	user := User{
 		Email:    "someone@example.com",
@@ -89,11 +45,6 @@ func TestUserValidateCreate(t *testing.T) {
 	}
 
 	if len(validationErrors) > 0 {
-		t.Errorf("should have passed validation, but got %d errors.", len(validationErrors))
-	}
-
-	err = tearDown()
-	if err != nil {
-		t.Fatal(err)
+		t.Errorf("should have passed validation, but got %d error(s): %s", len(validationErrors), validationErrors)
 	}
 }

@@ -1,7 +1,6 @@
 package models
 
 import (
-	"regexp"
 	"strings"
 
 	"github.com/sironfoot/go-twitter-bot/data/db"
@@ -26,7 +25,7 @@ func (user *User) Validate() ([]ValidationError, error) {
 		})
 	}
 
-	if regexp.MustCompile(".+@.+\\.[a-z]+").MatchString(user.Email) {
+	if !isEmail.MatchString(user.Email) {
 		validationErrors = append(validationErrors, ValidationError{
 			FieldName: "email",
 			Message:   "'email' is not a valid email address.",
@@ -51,7 +50,7 @@ func (user *User) ValidateCreate() ([]ValidationError, error) {
 	}
 
 	_, err = db.UserFromEmail(user.Email)
-	if err != nil {
+	if err != nil && err != db.ErrEntityNotFound {
 		return nil, err
 	}
 
