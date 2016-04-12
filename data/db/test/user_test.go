@@ -14,7 +14,7 @@ func TestUserFromID(t *testing.T) {
 	defer mustTearDown()
 
 	// arrange
-	testUser, id, err := createTestUser()
+	testUser, err := createTestUser()
 
 	// Non-existent record - Valid UUID
 	// act
@@ -25,7 +25,7 @@ func TestUserFromID(t *testing.T) {
 
 	// assert
 	if err != db.ErrEntityNotFound {
-		t.Errorf("user entity was returned from non-existent ID, userID: %s", user.ID())
+		t.Errorf("user entity was returned from non-existent ID, userID: %s", user.ID)
 	}
 
 	// Non-existent record - Invalid UUID
@@ -36,12 +36,12 @@ func TestUserFromID(t *testing.T) {
 
 	// assert
 	if err != db.ErrEntityNotFound {
-		t.Errorf("user entity was returned from non-existent invalid ID, userID: %s", user.ID())
+		t.Errorf("user entity was returned from non-existent invalid ID, userID: %s", user.ID)
 	}
 
 	// Existing record
 	// act
-	user, err = db.UserFromID(id)
+	user, err = db.UserFromID(testUser.ID)
 	if err != nil && err != db.ErrEntityNotFound {
 		t.Fatal(err)
 	}
@@ -51,7 +51,7 @@ func TestUserFromID(t *testing.T) {
 		t.Errorf("Expected user record, but got ErrEntityNotFound")
 	}
 
-	if user.ID() != id ||
+	if user.ID != testUser.ID ||
 		user.Email != testUser.Email ||
 		user.IsAdmin != testUser.IsAdmin ||
 		user.DateCreated.Equal(testUser.DateCreated) {
@@ -65,7 +65,7 @@ func TestUserFromEmail(t *testing.T) {
 	defer mustTearDown()
 
 	// arrange
-	testUser, id, err := createTestUser()
+	testUser, err := createTestUser()
 
 	// Non-existent record
 	// act
@@ -91,7 +91,7 @@ func TestUserFromEmail(t *testing.T) {
 		t.Errorf("Expected user record, but got ErrEntityNotFound")
 	}
 
-	if user.ID() != id ||
+	if user.ID != testUser.ID ||
 		user.Email != testUser.Email ||
 		user.IsAdmin != testUser.IsAdmin ||
 		user.DateCreated.Equal(testUser.DateCreated) {
@@ -130,7 +130,7 @@ func TestUsersAll(t *testing.T) {
 	// multiple records
 	// arrange
 	for i := 1; i <= max; i++ {
-		_, _, err = createTestUserWithEmail(fmt.Sprintf("test_%d@example.com", i))
+		_, err = createTestUserWithEmail(fmt.Sprintf("test_%d@example.com", i))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -164,7 +164,7 @@ func TestUsersAllPaging(t *testing.T) {
 	limit := 20
 
 	for i := 1; i <= max; i++ {
-		_, _, err := createTestUserWithEmail(fmt.Sprintf("test_%d@example.com", i))
+		_, err := createTestUserWithEmail(fmt.Sprintf("test_%d@example.com", i))
 		if err != nil {
 			t.Fatal(err)
 		}

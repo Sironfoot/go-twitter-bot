@@ -43,7 +43,7 @@ func GetTwitterAccounts(res http.ResponseWriter, req *http.Request) {
 
 	for _, twitterAccount := range twitterAccounts {
 		account := TwitterAccount{
-			ID:                twitterAccount.ID(),
+			ID:                twitterAccount.ID,
 			UserID:            twitterAccount.UserID,
 			Username:          twitterAccount.Username,
 			DateCreated:       twitterAccount.DateCreated,
@@ -60,7 +60,7 @@ func GetTwitterAccounts(res http.ResponseWriter, req *http.Request) {
 
 		for _, tweet := range tweets {
 			account.Tweets = append(account.Tweets, Tweet{
-				ID:       tweet.ID(),
+				ID:       tweet.ID,
 				Text:     tweet.Tweet,
 				PostOn:   tweet.PostOn,
 				IsPosted: tweet.IsPosted,
@@ -111,7 +111,7 @@ func GetTwitterAccount(res http.ResponseWriter, req *http.Request) {
 
 	model.Message = "OK"
 	model.TwitterAccount = TwitterAccount{
-		ID:                account.ID(),
+		ID:                account.ID,
 		UserID:            account.UserID,
 		Username:          account.Username,
 		DateCreated:       account.DateCreated,
@@ -128,7 +128,7 @@ func GetTwitterAccount(res http.ResponseWriter, req *http.Request) {
 
 	for _, tweet := range tweets {
 		model.TwitterAccount.Tweets = append(model.TwitterAccount.Tweets, Tweet{
-			ID:       tweet.ID(),
+			ID:       tweet.ID,
 			Text:     tweet.Tweet,
 			PostOn:   tweet.PostOn,
 			IsPosted: tweet.IsPosted,

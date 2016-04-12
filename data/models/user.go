@@ -78,7 +78,7 @@ func (user *User) ValidateUpdate(id string) ([]ValidationError, error) {
 			return nil, err
 		}
 
-		if existingUser.Email == user.Email && existingUser.ID() != id {
+		if existingUser.Email == user.Email && existingUser.ID != id {
 			validationErrors = append(validationErrors, ValidationError{
 				FieldName: "email",
 				Message:   "'email' address is already in use.",

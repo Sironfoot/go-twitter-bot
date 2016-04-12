@@ -7,7 +7,7 @@ import (
 
 // TwitterAccount maps to twitter_accounts table
 type TwitterAccount struct {
-	id                string
+	ID                string
 	UserID            string
 	Username          string
 	DateCreated       time.Time
@@ -17,15 +17,10 @@ type TwitterAccount struct {
 	AccessTokenSecret string
 }
 
-// ID returns read-only Primary Key ID of TwitterAccount
-func (account *TwitterAccount) ID() string {
-	return account.id
-}
-
 // IsTransient determines if TwitterAccount record has been saved to the database,
 // true means TwitterAccount struct has NOT been saved, false means it has.
 func (account *TwitterAccount) IsTransient() bool {
-	return len(account.id) == 0
+	return len(account.ID) == 0
 }
 
 // TwitterAccountSave saves the TwitterAccount struct to the database.
@@ -59,7 +54,7 @@ var TwitterAccountSave = func(account *TwitterAccount) error {
 				account.ConsumerSecret,
 				account.AccessToken,
 				account.AccessTokenSecret).
-			Scan(&account.id)
+			Scan(&account.ID)
 		if err != nil {
 			return err
 		}
@@ -75,7 +70,7 @@ var TwitterAccountSave = func(account *TwitterAccount) error {
 				WHERE id = $1`
 
 		_, err := db.Exec(cmd,
-			account.id,
+			account.ID,
 			account.UserID,
 			account.Username,
 			account.DateCreated,
@@ -101,7 +96,7 @@ var TwitterAccountDelete = func(account *TwitterAccount) error {
 	cmd := `DELETE FROM twitter_accounts
 			WHERE id = $1`
 
-	_, err := db.Exec(cmd, account.id)
+	_, err := db.Exec(cmd, account.ID)
 	return err
 }
 
@@ -139,7 +134,7 @@ var TwitterAccountFromID = func(id string) (TwitterAccount, error) {
 		return account, err
 	}
 
-	account.id = id
+	account.ID = id
 	return account, nil
 }
 
@@ -168,7 +163,7 @@ var TwitterAccountsAll = func() ([]TwitterAccount, error) {
 	for rows.Next() {
 		account := TwitterAccount{}
 		err = rows.Scan(
-			&account.id,
+			&account.ID,
 			&account.UserID,
 			&account.Username,
 			&account.DateCreated,
@@ -196,7 +191,7 @@ var TwitterAccountGetTweets = func(account *TwitterAccount) ([]Tweet, error) {
 				FROM tweets
 				WHERE twitter_account_id = $1`
 
-		rows, err := db.Query(cmd, account.id)
+		rows, err := db.Query(cmd, account.ID)
 		if err != nil {
 			return tweets, err
 		}
@@ -204,7 +199,7 @@ var TwitterAccountGetTweets = func(account *TwitterAccount) ([]Tweet, error) {
 		for rows.Next() {
 			tweet := Tweet{Account: account}
 			err = rows.Scan(
-				&tweet.id,
+				&tweet.ID,
 				&tweet.Tweet,
 				&tweet.PostOn,
 				&tweet.IsPosted,

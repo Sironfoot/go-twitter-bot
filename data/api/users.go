@@ -30,7 +30,7 @@ func GetUsers(res http.ResponseWriter, req *http.Request) {
 	var users []User
 	for _, userDB := range usersDB {
 		user := User{
-			ID:             userDB.ID(),
+			ID:             userDB.ID,
 			Email:          userDB.Email,
 			HashedPassword: userDB.HashedPassword,
 			IsAdmin:        userDB.IsAdmin,
@@ -81,7 +81,7 @@ func GetUser(res http.ResponseWriter, req *http.Request) {
 
 	model.Message = "OK"
 	model.User = User{
-		ID:             user.ID(),
+		ID:             user.ID,
 		Email:          user.Email,
 		HashedPassword: user.HashedPassword,
 		IsAdmin:        user.IsAdmin,

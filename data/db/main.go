@@ -23,7 +23,6 @@ func CloseDB() error {
 
 // Entity represents interface that all database mapped structs implement
 type Entity interface {
-	ID() string
 	IsTransient() bool
 	Save() error
 	Delete() error

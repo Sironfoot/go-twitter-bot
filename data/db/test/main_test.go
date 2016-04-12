@@ -78,11 +78,11 @@ func mustTearDown() {
 	return
 }
 
-func createTestUser() (user db.User, id string, err error) {
+func createTestUser() (user db.User, err error) {
 	return createTestUserWithEmail("test@example.com")
 }
 
-func createTestUserWithEmail(email string) (user db.User, id string, err error) {
+func createTestUserWithEmail(email string) (user db.User, err error) {
 	user = db.User{
 		Email:          email,
 		HashedPassword: "Password1",
@@ -102,7 +102,7 @@ func createTestUserWithEmail(email string) (user db.User, id string, err error) 
 
 	err = statement.
 		QueryRow(user.Email, user.HashedPassword, user.IsAdmin, user.DateCreated).
-		Scan(&id)
+		Scan(&user.ID)
 	if err != nil {
 		return
 	}

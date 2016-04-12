@@ -7,7 +7,7 @@ import (
 
 // Tweet maps to tweets table
 type Tweet struct {
-	id          string
+	ID          string
 	Account     *TwitterAccount
 	Tweet       string
 	PostOn      time.Time
@@ -15,15 +15,10 @@ type Tweet struct {
 	DateCreated time.Time
 }
 
-// ID returns read-only Primary Key ID of Tweet
-func (tweet *Tweet) ID() string {
-	return tweet.id
-}
-
 // IsTransient determines if Tweet record has been saved to the database,
 // true means Tweet struct has NOT been saved, false means it has.
 func (tweet *Tweet) IsTransient() bool {
-	return len(tweet.id) == 0
+	return len(tweet.ID) == 0
 }
 
 // TweetSave saves the Tweet struct to the database.
@@ -44,8 +39,8 @@ var TweetSave = func(tweet *Tweet) error {
 		defer statement.Close()
 
 		err = statement.
-			QueryRow(tweet.Account.id, tweet.Tweet, tweet.PostOn, tweet.IsPosted, tweet.DateCreated).
-			Scan(&tweet.id)
+			QueryRow(tweet.Account.ID, tweet.Tweet, tweet.PostOn, tweet.IsPosted, tweet.DateCreated).
+			Scan(&tweet.ID)
 		if err != nil {
 			return err
 		}
@@ -54,7 +49,7 @@ var TweetSave = func(tweet *Tweet) error {
 		        SET tweet = $2, post_on = $3, is_posted = $4, date_created = $5
 			    WHERE id = $1`
 
-		_, err := db.Exec(cmd, tweet.id, tweet.Tweet, tweet.PostOn, tweet.IsPosted, tweet.DateCreated)
+		_, err := db.Exec(cmd, tweet.ID, tweet.Tweet, tweet.PostOn, tweet.IsPosted, tweet.DateCreated)
 		if err != nil {
 			return err
 		}
@@ -73,7 +68,7 @@ var TweetDelete = func(tweet *Tweet) error {
 	cmd := `DELETE FROM tweets
 		    WHERE id = $1`
 
-	_, err := db.Exec(cmd, tweet.id)
+	_, err := db.Exec(cmd, tweet.ID)
 	return err
 }
 

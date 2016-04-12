@@ -7,22 +7,17 @@ import (
 
 // User maps to users table
 type User struct {
-	id             string
+	ID             string
 	Email          string
 	HashedPassword string
 	IsAdmin        bool
 	DateCreated    time.Time
 }
 
-// ID returns read-only Primary Key ID of User
-func (user *User) ID() string {
-	return user.id
-}
-
 // IsTransient determines if User record has been saved to the database,
 // true means User struct has NOT been saved, false means it has.
 func (user *User) IsTransient() bool {
-	return len(user.id) == 0
+	return len(user.ID) == 0
 }
 
 // UserSave saves the User struct to the database.
@@ -40,7 +35,7 @@ var UserSave = func(user *User) error {
 
 		err = statement.
 			QueryRow(user.Email, user.HashedPassword, user.IsAdmin, user.DateCreated).
-			Scan(&user.id)
+			Scan(&user.ID)
 		if err != nil {
 			return err
 		}
@@ -49,7 +44,7 @@ var UserSave = func(user *User) error {
 				SET email = $2, hashed_password = $3 is_admin = $4, date_created = $5
 				WHERE id = $1`
 
-		_, err := db.Exec(cmd, user.id, user.HashedPassword, user.Email, user.IsAdmin, user.DateCreated)
+		_, err := db.Exec(cmd, user.ID, user.HashedPassword, user.Email, user.IsAdmin, user.DateCreated)
 		if err != nil {
 			return err
 		}
@@ -68,7 +63,7 @@ var UserDelete = func(user *User) error {
 	cmd := `DELETE FROM users
 			WHERE id = $1`
 
-	_, err := db.Exec(cmd, user.id)
+	_, err := db.Exec(cmd, user.ID)
 	return err
 }
 
@@ -97,7 +92,7 @@ var UserFromID = func(id string) (User, error) {
 		return user, err
 	}
 
-	user.id = id
+	user.ID = id
 	return user, nil
 }
 
@@ -110,7 +105,7 @@ var UserFromEmail = func(email string) (User, error) {
 			WHERE email = $1`
 
 	err := db.QueryRow(cmd, email).
-		Scan(&user.id, &user.Email, &user.HashedPassword, &user.IsAdmin, &user.DateCreated)
+		Scan(&user.ID, &user.Email, &user.HashedPassword, &user.IsAdmin, &user.DateCreated)
 	if err == sql.ErrNoRows {
 		return user, ErrEntityNotFound
 	} else if err != nil {
@@ -174,7 +169,7 @@ var UsersAll = func(query QueryAll) ([]User, error) {
 
 	for rows.Next() {
 		user := User{}
-		err := rows.Scan(&user.id, &user.Email, &user.HashedPassword, &user.IsAdmin, &user.DateCreated)
+		err := rows.Scan(&user.ID, &user.Email, &user.HashedPassword, &user.IsAdmin, &user.DateCreated)
 		if err != nil {
 			return nil, err
 		}
