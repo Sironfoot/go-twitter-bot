@@ -131,11 +131,6 @@ const (
 var UsersAll = func(query QueryAll) ([]User, error) {
 	var users []User
 
-	cmd := `SELECT id, email, hashed_password, is_admin, date_created
-			FROM users
-			ORDER BY $1
-			LIMIT $2`
-
 	orderBy := query.OrderBy
 	if query.OrderAsc {
 		orderBy += " ASC"
@@ -143,7 +138,34 @@ var UsersAll = func(query QueryAll) ([]User, error) {
 		orderBy += " DESC"
 	}
 
-	rows, err := db.Query(cmd, orderBy, query.Limit)
+	var rows *sql.Rows
+	var err error
+
+	if after, ok := query.After.(string); ok && query.OrderBy == UsersOrderByEmail {
+		cmd := `SELECT id, email, hashed_password, is_admin, date_created
+			    FROM users
+				WHERE id > (SELECT id FROM users WHERE email = $1)
+				ORDER BY $2
+			    LIMIT $3`
+
+		rows, err = db.Query(cmd, after, orderBy, query.Limit)
+	} else if after, ok := query.After.(time.Time); ok && query.OrderBy == UsersOrderByDateCreated {
+		cmd := `SELECT id, email, hashed_password, is_admin, date_created
+			    FROM users
+				WHERE date_created > $1
+				ORDER BY $2
+			    LIMIT $3`
+
+		rows, err = db.Query(cmd, after, orderBy, query.Limit)
+	} else {
+		cmd := `SELECT id, email, hashed_password, is_admin, date_created
+			    FROM users
+			    ORDER BY $1
+			    LIMIT $2`
+
+		rows, err = db.Query(cmd, orderBy, query.Limit)
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +174,7 @@ var UsersAll = func(query QueryAll) ([]User, error) {
 
 	for rows.Next() {
 		user := User{}
-		err = rows.Scan(&user.id, &user.Email, &user.HashedPassword, &user.IsAdmin, &user.DateCreated)
+		err := rows.Scan(&user.id, &user.Email, &user.HashedPassword, &user.IsAdmin, &user.DateCreated)
 		if err != nil {
 			return nil, err
 		}
