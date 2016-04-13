@@ -35,6 +35,8 @@ func main() {
 		Methods("POST")
 	router.HandleFunc("/users/{userID}", api.UserUpdate).
 		Methods("PUT")
+	router.HandleFunc("/users/{userID}", api.UserDelete).
+		Methods("DELETE")
 
 	router.HandleFunc("/twitterAccounts", api.TwitterAccountsAll).
 		Methods("GET")

@@ -11,13 +11,14 @@ import (
 	"github.com/sironfoot/go-twitter-bot/data/models"
 )
 
+const ok = "OK"
+
 // User model returned by REST API
 type User struct {
-	ID             string    `json:"id"`
-	Email          string    `json:"email"`
-	HashedPassword string    `json:"hasedPassword"`
-	IsAdmin        bool      `json:"isAdmin"`
-	DateCreated    time.Time `json:"dateCreated"`
+	ID          string    `json:"id"`
+	Email       string    `json:"email"`
+	IsAdmin     bool      `json:"isAdmin"`
+	DateCreated time.Time `json:"dateCreated"`
 }
 
 // UsersAll = GET: /users
@@ -30,11 +31,10 @@ func UsersAll(res http.ResponseWriter, req *http.Request) {
 	var users []User
 	for _, userDB := range usersDB {
 		user := User{
-			ID:             userDB.ID,
-			Email:          userDB.Email,
-			HashedPassword: userDB.HashedPassword,
-			IsAdmin:        userDB.IsAdmin,
-			DateCreated:    userDB.DateCreated,
+			ID:          userDB.ID,
+			Email:       userDB.Email,
+			IsAdmin:     userDB.IsAdmin,
+			DateCreated: userDB.DateCreated,
 		}
 
 		users = append(users, user)
@@ -79,13 +79,12 @@ func UserGet(res http.ResponseWriter, req *http.Request) {
 		panic(err)
 	}
 
-	model.Message = "OK"
+	model.Message = ok
 	model.User = User{
-		ID:             user.ID,
-		Email:          user.Email,
-		HashedPassword: user.HashedPassword,
-		IsAdmin:        user.IsAdmin,
-		DateCreated:    user.DateCreated,
+		ID:          user.ID,
+		Email:       user.Email,
+		IsAdmin:     user.IsAdmin,
+		DateCreated: user.DateCreated,
 	}
 }
 
@@ -116,7 +115,7 @@ func UserCreate(res http.ResponseWriter, req *http.Request) {
 		model.Errors = validationErrors
 		res.WriteHeader(http.StatusBadRequest)
 	} else {
-		model.Message = "OK"
+		model.Message = ok
 		res.WriteHeader(http.StatusCreated)
 	}
 
@@ -158,12 +157,14 @@ func UserUpdate(res http.ResponseWriter, req *http.Request) {
 	}()
 
 	user, err := db.UserFromID(userID)
+	if err != nil && err != db.ErrEntityNotFound {
+		panic(err)
+	}
+
 	if err == db.ErrEntityNotFound {
 		model.Message = fmt.Sprintf("User not found on ID: %s", userID)
 		res.WriteHeader(http.StatusNotFound)
 		return
-	} else if err != nil {
-		panic(err)
 	}
 
 	validationErrors, err := updateUser.ValidateUpdate(userID)
@@ -183,4 +184,43 @@ func UserUpdate(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		panic(err)
 	}
+
+	model.Message = ok
+}
+
+// UserDelete = DELETE: /users/{userID}
+func UserDelete(res http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	userID := vars["userID"]
+
+	model := struct {
+		Message string `json:"message"`
+	}{}
+
+	defer func() {
+		data, jsonErr := json.MarshalIndent(model, "", "   ")
+		if jsonErr != nil {
+			panic(jsonErr)
+		}
+
+		res.Write(data)
+	}()
+
+	user, err := db.UserFromID(userID)
+	if err != nil && err != db.ErrEntityNotFound {
+		panic(err)
+	}
+
+	if err == db.ErrEntityNotFound {
+		model.Message = fmt.Sprintf("User not found on ID: %s", userID)
+		res.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	err = user.Delete()
+	if err != nil {
+		panic(err)
+	}
+
+	model.Message = ok
 }
