@@ -32,8 +32,8 @@ type Tweet struct {
 	IsPosted bool      `json:"isPosted"`
 }
 
-// GetTwitterAccounts = GET: /twitterAccounts
-func GetTwitterAccounts(res http.ResponseWriter, req *http.Request) {
+// TwitterAccountsAll = GET: /twitterAccounts
+func TwitterAccountsAll(res http.ResponseWriter, req *http.Request) {
 	twitterAccounts, err := db.TwitterAccountsAll()
 	if err != nil {
 		panic(err)
@@ -79,8 +79,8 @@ func GetTwitterAccounts(res http.ResponseWriter, req *http.Request) {
 	res.Write(data)
 }
 
-// GetTwitterAccount = GET: /twitterAccount/{twitterAccountID}
-func GetTwitterAccount(res http.ResponseWriter, req *http.Request) {
+// TwitterAccountGet = GET: /twitterAccount/{twitterAccountID}
+func TwitterAccountGet(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	twitterAccountID := vars["twitterAccountID"]
 

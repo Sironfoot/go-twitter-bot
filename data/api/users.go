@@ -20,8 +20,8 @@ type User struct {
 	DateCreated    time.Time `json:"dateCreated"`
 }
 
-// GetUsers = GET: /users
-func GetUsers(res http.ResponseWriter, req *http.Request) {
+// UsersAll = GET: /users
+func UsersAll(res http.ResponseWriter, req *http.Request) {
 	usersDB, err := db.UsersAll(db.QueryAll{})
 	if err != nil {
 		panic(err)
@@ -49,8 +49,8 @@ func GetUsers(res http.ResponseWriter, req *http.Request) {
 	res.Write(data)
 }
 
-// GetUser = GET: /users/[userID]
-func GetUser(res http.ResponseWriter, req *http.Request) {
+// UserGet = GET: /users/[userID]
+func UserGet(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	userID := vars["userID"]
 
@@ -89,8 +89,8 @@ func GetUser(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-// CreateUser = POST: /users
-func CreateUser(res http.ResponseWriter, req *http.Request) {
+// UserCreate = POST: /users
+func UserCreate(res http.ResponseWriter, req *http.Request) {
 	var newUser models.User
 
 	err := json.NewDecoder(req.Body).Decode(&newUser)
@@ -128,8 +128,8 @@ func CreateUser(res http.ResponseWriter, req *http.Request) {
 	res.Write(data)
 }
 
-// UpdateUser = PUT: /users/{userID}
-func UpdateUser(res http.ResponseWriter, req *http.Request) {
+// UserUpdate = PUT: /users/{userID}
+func UserUpdate(res http.ResponseWriter, req *http.Request) {
 	var updateUser models.User
 
 	err := json.NewDecoder(req.Body).Decode(&updateUser)
@@ -184,5 +184,3 @@ func UpdateUser(res http.ResponseWriter, req *http.Request) {
 		panic(err)
 	}
 }
-
-// 205
