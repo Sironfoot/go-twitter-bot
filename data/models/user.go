@@ -2,6 +2,7 @@ package models
 
 import (
 	"strings"
+	"unicode/utf8"
 
 	"github.com/sironfoot/go-twitter-bot/data/db"
 )
@@ -21,13 +22,13 @@ func (user *User) Validate() ([]ValidationError, error) {
 	if strings.TrimSpace(user.Email) == "" {
 		validationErrors = append(validationErrors, ValidationError{
 			FieldName: "email",
+			Type:      ValidationTypeRequired,
 			Message:   "'email' address is required.",
 		})
-	}
-
-	if !isEmail.MatchString(user.Email) {
+	} else if !isEmail.MatchString(user.Email) {
 		validationErrors = append(validationErrors, ValidationError{
 			FieldName: "email",
+			Type:      ValidationTypeInvalid,
 			Message:   "'email' is not a valid email address.",
 		})
 	}
@@ -45,7 +46,14 @@ func (user *User) ValidateCreate() ([]ValidationError, error) {
 	if strings.TrimSpace(user.Password) == "" {
 		validationErrors = append(validationErrors, ValidationError{
 			FieldName: "password",
+			Type:      ValidationTypeRequired,
 			Message:   "'password' is required.",
+		})
+	} else if utf8.RuneCountInString(user.Password) < 8 {
+		validationErrors = append(validationErrors, ValidationError{
+			FieldName: "password",
+			Type:      ValidationTypeMinLength,
+			Message:   "'password' must be at least 8 characters.",
 		})
 	}
 
@@ -57,6 +65,7 @@ func (user *User) ValidateCreate() ([]ValidationError, error) {
 	if err != db.ErrEntityNotFound {
 		validationErrors = append(validationErrors, ValidationError{
 			FieldName: "email",
+			Type:      ValidationTypeNotUnique,
 			Message:   "'email' address is already in use.",
 		})
 	}
@@ -81,6 +90,7 @@ func (user *User) ValidateUpdate(id string) ([]ValidationError, error) {
 		if existingUser.Email == user.Email && existingUser.ID != id {
 			validationErrors = append(validationErrors, ValidationError{
 				FieldName: "email",
+				Type:      ValidationTypeNotUnique,
 				Message:   "'email' address is already in use.",
 			})
 		}
