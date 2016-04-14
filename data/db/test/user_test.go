@@ -9,6 +9,17 @@ import (
 	"github.com/sironfoot/go-twitter-bot/data/db"
 )
 
+func usersAreSame(user1, user2 db.User) bool {
+	return user1.ID == user2.ID &&
+		user1.Name == user2.Name &&
+		user1.Email == user2.Email &&
+		user1.HashedPassword == user2.HashedPassword &&
+		user1.AuthToken == user2.AuthToken &&
+		user1.IsAdmin == user2.IsAdmin &&
+		user1.IsService == user2.IsService &&
+		user1.DateCreated.Unix() == user2.DateCreated.Unix() // accurate to nearest second
+}
+
 func TestUserFromID(t *testing.T) {
 	mustSetUp()
 	defer mustTearDown()
@@ -51,12 +62,8 @@ func TestUserFromID(t *testing.T) {
 		t.Errorf("Expected user record, but got ErrEntityNotFound")
 	}
 
-	if user.ID != testUser.ID ||
-		user.Email != testUser.Email ||
-		user.IsAdmin != testUser.IsAdmin ||
-		user.DateCreated.Equal(testUser.DateCreated) {
-
-		t.Errorf("Expected user and actual user don't match")
+	if !usersAreSame(user, testUser) {
+		t.Errorf("Expected user and actual user don't match,\nuser:\t\t%v,\ntestUser:\t%v", user, testUser)
 	}
 }
 
@@ -91,11 +98,7 @@ func TestUserFromEmail(t *testing.T) {
 		t.Errorf("Expected user record, but got ErrEntityNotFound")
 	}
 
-	if user.ID != testUser.ID ||
-		user.Email != testUser.Email ||
-		user.IsAdmin != testUser.IsAdmin ||
-		user.DateCreated.Equal(testUser.DateCreated) {
-
+	if !usersAreSame(user, testUser) {
 		t.Errorf("Expected user and actual user don't match")
 	}
 }
@@ -130,7 +133,7 @@ func TestUsersAll(t *testing.T) {
 	// multiple records
 	// arrange
 	for i := 1; i <= max; i++ {
-		_, err = createTestUserWithEmail(fmt.Sprintf("test_%d@example.com", i))
+		_, err = createTestUserWithProperties(fmt.Sprintf("Test User %d", i), fmt.Sprintf("test_%d@example.com", i))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -164,7 +167,7 @@ func TestUsersAllPaging(t *testing.T) {
 	limit := 20
 
 	for i := 1; i <= max; i++ {
-		_, err := createTestUserWithEmail(fmt.Sprintf("test_%d@example.com", i))
+		_, err := createTestUserWithProperties(fmt.Sprintf("Test User %d", i), fmt.Sprintf("test_%d@example.com", i))
 		if err != nil {
 			t.Fatal(err)
 		}

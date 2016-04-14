@@ -79,19 +79,22 @@ func mustTearDown() {
 }
 
 func createTestUser() (user db.User, err error) {
-	return createTestUserWithEmail("test@example.com")
+	return createTestUserWithProperties("Test User", "test@example.com")
 }
 
-func createTestUserWithEmail(email string) (user db.User, err error) {
+func createTestUserWithProperties(name, email string) (user db.User, err error) {
 	user = db.User{
+		Name:           name,
 		Email:          email,
 		HashedPassword: "Password1",
+		AuthToken:      sql.NullString{},
 		IsAdmin:        true,
-		DateCreated:    time.Now(),
+		IsService:      false,
+		DateCreated:    time.Now().UTC(),
 	}
 
-	createSQL := `INSERT INTO users(email, hashed_password, is_admin, date_created)
-                  VALUES($1, $2, $3, $4)
+	createSQL := `INSERT INTO users(name, email, hashed_password, auth_token, is_admin, is_service, date_created)
+                  VALUES($1, $2, $3, $4, $5, $6, $7)
                   RETURNING id`
 
 	statement, err := testDB.Prepare(createSQL)
@@ -101,7 +104,7 @@ func createTestUserWithEmail(email string) (user db.User, err error) {
 	defer statement.Close()
 
 	err = statement.
-		QueryRow(user.Email, user.HashedPassword, user.IsAdmin, user.DateCreated).
+		QueryRow(user.Name, user.Email, user.HashedPassword, user.AuthToken, user.IsAdmin, user.IsService, user.DateCreated).
 		Scan(&user.ID)
 	if err != nil {
 		return

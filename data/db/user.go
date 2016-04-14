@@ -8,9 +8,12 @@ import (
 // User maps to users table
 type User struct {
 	ID             string
+	Name           string
 	Email          string
 	HashedPassword string
+	AuthToken      sql.NullString
 	IsAdmin        bool
+	IsService      bool
 	DateCreated    time.Time
 }
 
@@ -23,8 +26,8 @@ func (user *User) IsTransient() bool {
 // UserSave saves the User struct to the database.
 var UserSave = func(user *User) error {
 	if user.IsTransient() {
-		cmd := `INSERT INTO users(email, hashed_password, is_admin, date_created)
-				VALUES($1, $2, $3, $4)
+		cmd := `INSERT INTO users(name, email, hashed_password, auth_token, is_admin, is_service, date_created)
+				VALUES($1, $2, $3, $4, $5, $6, $7)
 				RETURNING id`
 
 		statement, err := db.Prepare(cmd)
@@ -41,10 +44,16 @@ var UserSave = func(user *User) error {
 		}
 	} else {
 		cmd := `UPDATE users
-				SET email = $2, hashed_password = $3 is_admin = $4, date_created = $5
+				SET name = $2,
+					email = $3,
+					hashed_password = $4,
+					auth_token = $5,
+					is_admin = $6,
+					is_service = $7,
+					date_created = $8
 				WHERE id = $1`
 
-		_, err := db.Exec(cmd, user.ID, user.HashedPassword, user.Email, user.IsAdmin, user.DateCreated)
+		_, err := db.Exec(cmd, user.ID, user.Name, user.Email, user.HashedPassword, user.AuthToken, user.IsAdmin, user.IsService, user.DateCreated)
 		if err != nil {
 			return err
 		}
@@ -80,12 +89,12 @@ var UserFromID = func(id string) (User, error) {
 		return user, ErrEntityNotFound
 	}
 
-	cmd := `SELECT email, hashed_password, is_admin, date_created
+	cmd := `SELECT name, email, hashed_password, auth_token, is_admin, is_service, date_created
 			FROM users
 			WHERE id = $1`
 
 	err := db.QueryRow(cmd, id).
-		Scan(&user.Email, &user.HashedPassword, &user.IsAdmin, &user.DateCreated)
+		Scan(&user.Name, &user.Email, &user.HashedPassword, &user.AuthToken, &user.IsAdmin, &user.IsService, &user.DateCreated)
 	if err == sql.ErrNoRows {
 		return user, ErrEntityNotFound
 	} else if err != nil {
@@ -100,12 +109,12 @@ var UserFromID = func(id string) (User, error) {
 var UserFromEmail = func(email string) (User, error) {
 	var user User
 
-	cmd := `SELECT id, email, hashed_password, is_admin, date_created
+	cmd := `SELECT id, name, email, hashed_password, auth_token, is_admin, is_service, date_created
 			FROM users
 			WHERE email = $1`
 
 	err := db.QueryRow(cmd, email).
-		Scan(&user.ID, &user.Email, &user.HashedPassword, &user.IsAdmin, &user.DateCreated)
+		Scan(&user.ID, &user.Name, &user.Email, &user.HashedPassword, &user.AuthToken, &user.IsAdmin, &user.IsService, &user.DateCreated)
 	if err == sql.ErrNoRows {
 		return user, ErrEntityNotFound
 	} else if err != nil {
@@ -137,7 +146,7 @@ var UsersAll = func(query QueryAll) ([]User, error) {
 	var err error
 
 	if after, ok := query.After.(string); ok && query.OrderBy == UsersOrderByEmail {
-		cmd := `SELECT id, email, hashed_password, is_admin, date_created
+		cmd := `SELECT id, name, email, hashed_password, auth_token, is_admin, is_service, date_created
 			    FROM users
 				WHERE id > (SELECT id FROM users WHERE email = $1)
 				ORDER BY $2
@@ -145,7 +154,7 @@ var UsersAll = func(query QueryAll) ([]User, error) {
 
 		rows, err = db.Query(cmd, after, orderBy, query.Limit)
 	} else if after, ok := query.After.(time.Time); ok && query.OrderBy == UsersOrderByDateCreated {
-		cmd := `SELECT id, email, hashed_password, is_admin, date_created
+		cmd := `SELECT id, name, email, hashed_password, auth_token, is_admin, is_service, date_created
 			    FROM users
 				WHERE date_created > $1
 				ORDER BY $2
@@ -153,7 +162,7 @@ var UsersAll = func(query QueryAll) ([]User, error) {
 
 		rows, err = db.Query(cmd, after, orderBy, query.Limit)
 	} else {
-		cmd := `SELECT id, email, hashed_password, is_admin, date_created
+		cmd := `SELECT id, name, email, hashed_password, auth_token, is_admin, is_service, date_created
 			    FROM users
 			    ORDER BY $1
 			    LIMIT $2`
@@ -169,7 +178,7 @@ var UsersAll = func(query QueryAll) ([]User, error) {
 
 	for rows.Next() {
 		user := User{}
-		err := rows.Scan(&user.ID, &user.Email, &user.HashedPassword, &user.IsAdmin, &user.DateCreated)
+		err := rows.Scan(&user.ID, &user.Name, &user.Email, &user.HashedPassword, &user.AuthToken, &user.IsAdmin, &user.IsService, &user.DateCreated)
 		if err != nil {
 			return nil, err
 		}
