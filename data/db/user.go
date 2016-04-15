@@ -7,14 +7,14 @@ import (
 
 // User maps to users table
 type User struct {
-	ID             string
-	Name           string
-	Email          string
-	HashedPassword string
-	AuthToken      sql.NullString
-	IsAdmin        bool
-	IsService      bool
-	DateCreated    time.Time
+	ID             string         `db:"id"`
+	Name           string         `db:"name"`
+	Email          string         `db:"email"`
+	HashedPassword string         `db:"hashed_password"`
+	AuthToken      sql.NullString `db:"auth_token"`
+	IsAdmin        bool           `db:"is_admin"`
+	IsService      bool           `db:"is_service"`
+	DateCreated    time.Time      `db:"date_created"`
 }
 
 // IsTransient determines if User record has been saved to the database,
@@ -23,8 +23,17 @@ func (user *User) IsTransient() bool {
 	return len(user.ID) == 0
 }
 
+// MetaData returns meta data information about the User entity
+func (user *User) MetaData() EntityMetaData {
+	return EntityMetaData{
+		TableName:      "users",
+		PrimaryKeyName: "id",
+	}
+}
+
 // UserSave saves the User struct to the database.
 var UserSave = func(user *User) error {
+
 	if user.IsTransient() {
 		cmd := `INSERT INTO users(name, email, hashed_password, auth_token, is_admin, is_service, date_created)
 				VALUES($1, $2, $3, $4, $5, $6, $7)
