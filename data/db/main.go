@@ -42,4 +42,12 @@ type QueryAll struct {
 	After    interface{}
 }
 
+// PagingInfo contains information about paging when calling queries that return multiple records
+type PagingInfo struct {
+	Limit   int
+	Offset  int
+	OrderBy string
+	Asc     bool
+}
+
 var isUUID = regexp.MustCompile(`(?i)^[a-f0-9]{8}\-[a-f0-9]{4}\-[a-f0-9]{4}\-[a-f0-9]{4}\-[a-f0-9]{12}$`)

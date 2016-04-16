@@ -3,6 +3,8 @@ package db
 import (
 	"fmt"
 	"reflect"
+	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -68,8 +70,42 @@ func GenerateUpdateStatement(entity Entity) string {
 	return cmd + " WHERE " + metaData.PrimaryKeyName + " = $1"
 }
 
+// GenerateDeleteByIDStatement generates an SQL command to DELETE a record from the database by its ID
+func GenerateDeleteByIDStatement(entity Entity) string {
+	metaData := entity.MetaData()
+	return "DELETE FROM " + metaData.TableName + " WHERE " + metaData.PrimaryKeyName + " = $1"
+}
+
 // GenerateGetByIDStatement generates an SQL command to SELECT the record from the database by its ID
 func GenerateGetByIDStatement(entity Entity) string {
 	metaData := entity.MetaData()
 	return "SELECT * FROM " + metaData.TableName + " WHERE " + metaData.PrimaryKeyName + " = $1"
+}
+
+// GenerateGetAllStatement generates an SQL command to SELECT
+// all records from the database complete with paging information
+func GenerateGetAllStatement(entity Entity, where string) string {
+	metaData := entity.MetaData()
+
+	if strings.TrimSpace(where) != "" {
+		// convert "email = $1" to "email = $4"
+		where = regexp.MustCompile(`\$[0-9]+`).
+			ReplaceAllStringFunc(where, func(placeholder string) string {
+				placeholderNum, _ := strconv.Atoi(regexp.MustCompile(`[0-9]+`).FindString(placeholder))
+				placeholderNum = placeholderNum + 3
+				return "$" + strconv.Itoa(placeholderNum)
+			})
+	}
+
+	cmd := "SELECT * " +
+		"FROM " + metaData.TableName + " "
+
+	if strings.TrimSpace(where) != "" {
+		cmd += "WHERE " + where + " "
+	}
+
+	cmd += "ORDER BY $1 " +
+		"LIMIT $2 OFFSET $3"
+
+	return cmd
 }

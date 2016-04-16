@@ -39,11 +39,50 @@ func TestGenerateUpdateStatement(t *testing.T) {
 	}
 }
 
+func TestGenerateDeleteByIDStatement(t *testing.T) {
+	user := db.User{}
+
+	expected := "DELETE FROM users WHERE id = $1"
+	actual := db.GenerateDeleteByIDStatement(&user)
+
+	if expected != actual {
+		t.Errorf("actual SQL statement was:\n\n%s\n\nbut expected:\n\n%s", actual, expected)
+	}
+}
+
 func TestGenerateGetByIdStatement(t *testing.T) {
 	user := db.User{}
 
 	expected := "SELECT * FROM users WHERE id = $1"
-	actual := db.GenerateGetByIdStatement(&user)
+	actual := db.GenerateGetByIDStatement(&user)
+
+	if expected != actual {
+		t.Errorf("actual SQL statement was:\n\n%s\n\nbut expected:\n\n%s", actual, expected)
+	}
+}
+
+func TestGenerateGetAllStatement(t *testing.T) {
+	user := db.User{}
+
+	// no WHERE clause
+	expected := "SELECT * " +
+		"FROM users " +
+		"ORDER BY $1 " +
+		"LIMIT $2 OFFSET $3"
+
+	actual := db.GenerateGetAllStatement(&user, "")
+
+	if expected != actual {
+		t.Errorf("actual SQL statement was:\n\n%s\n\nbut expected:\n\n%s", actual, expected)
+	}
+
+	// with WHERE clause
+	expected = "SELECT * " +
+		"FROM users " +
+		"WHERE email = $4 AND name LIKE '$5' " +
+		"ORDER BY $1 " +
+		"LIMIT $2 OFFSET $3"
+	actual = db.GenerateGetAllStatement(&user, "email = $1 AND name LIKE '$2'")
 
 	if expected != actual {
 		t.Errorf("actual SQL statement was:\n\n%s\n\nbut expected:\n\n%s", actual, expected)
