@@ -79,7 +79,25 @@ func GenerateDeleteByIDStatement(entity Entity) string {
 // GenerateGetByIDStatement generates an SQL command to SELECT the record from the database by its ID
 func GenerateGetByIDStatement(entity Entity) string {
 	metaData := entity.MetaData()
-	return "SELECT * FROM " + metaData.TableName + " WHERE " + metaData.PrimaryKeyName + " = $1"
+
+	var columnNames []string
+
+	val := reflect.ValueOf(entity).Elem()
+	entityType := val.Type()
+
+	for i := 0; i < val.NumField(); i++ {
+		fieldInfo := entityType.Field(i)
+		tag := fieldInfo.Tag
+		columnName := strings.TrimSpace(tag.Get("db"))
+
+		if columnName != "" && columnName != metaData.PrimaryKeyName {
+			columnNames = append(columnNames, columnName)
+		}
+	}
+
+	return "SELECT " + strings.Join(columnNames, ", ") + " " +
+		"FROM " + metaData.TableName + " " +
+		"WHERE " + metaData.PrimaryKeyName + " = $1"
 }
 
 // GenerateGetAllStatement generates an SQL command to SELECT
@@ -97,7 +115,22 @@ func GenerateGetAllStatement(entity Entity, where string) string {
 			})
 	}
 
-	cmd := "SELECT * " +
+	var columnNames []string
+
+	val := reflect.ValueOf(entity).Elem()
+	entityType := val.Type()
+
+	for i := 0; i < val.NumField(); i++ {
+		fieldInfo := entityType.Field(i)
+		tag := fieldInfo.Tag
+		columnName := strings.TrimSpace(tag.Get("db"))
+
+		if columnName != "" && columnName != metaData.PrimaryKeyName {
+			columnNames = append(columnNames, columnName)
+		}
+	}
+
+	cmd := "SELECT " + metaData.PrimaryKeyName + ", " + strings.Join(columnNames, ", ") + " " +
 		"FROM " + metaData.TableName + " "
 
 	if strings.TrimSpace(where) != "" {

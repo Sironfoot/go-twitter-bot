@@ -1,15 +1,26 @@
 package db_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/sironfoot/go-twitter-bot/data/db"
 )
 
+var columnNames = []string{
+	"name",
+	"email",
+	"hashed_password",
+	"auth_token",
+	"is_admin",
+	"is_service",
+	"date_created",
+}
+
 func TestGenerateInsertStatement(t *testing.T) {
 	user := db.User{}
 
-	expected := "INSERT INTO users(name, email, hashed_password, auth_token, is_admin, is_service, date_created) " +
+	expected := "INSERT INTO users(" + strings.Join(columnNames, ", ") + ") " +
 		"VALUES($1, $2, $3, $4, $5, $6, $7) " +
 		"RETURNING id"
 	actual := db.GenerateInsertStatement(&user)
@@ -53,7 +64,7 @@ func TestGenerateDeleteByIDStatement(t *testing.T) {
 func TestGenerateGetByIdStatement(t *testing.T) {
 	user := db.User{}
 
-	expected := "SELECT * FROM users WHERE id = $1"
+	expected := "SELECT " + strings.Join(columnNames, ", ") + " FROM users WHERE id = $1"
 	actual := db.GenerateGetByIDStatement(&user)
 
 	if expected != actual {
@@ -65,7 +76,7 @@ func TestGenerateGetAllStatement(t *testing.T) {
 	user := db.User{}
 
 	// no WHERE clause
-	expected := "SELECT * " +
+	expected := "SELECT id, " + strings.Join(columnNames, ", ") + " " +
 		"FROM users " +
 		"ORDER BY $1 " +
 		"LIMIT $2 OFFSET $3"
@@ -77,7 +88,7 @@ func TestGenerateGetAllStatement(t *testing.T) {
 	}
 
 	// with WHERE clause
-	expected = "SELECT * " +
+	expected = "SELECT id, " + strings.Join(columnNames, ", ") + " " +
 		"FROM users " +
 		"WHERE email = $4 AND name LIKE '$5' " +
 		"ORDER BY $1 " +
