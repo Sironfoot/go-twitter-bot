@@ -274,6 +274,7 @@ func EntitySave(entity Entity) error {
 	return nil
 }
 
+// EntityDelete deletes an entity from the databse
 func EntityDelete(entity Entity) error {
 	metaData := entity.MetaData()
 

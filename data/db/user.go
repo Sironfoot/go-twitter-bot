@@ -33,42 +33,7 @@ func (user *User) MetaData() EntityMetaData {
 
 // UserSave saves the User struct to the database.
 var UserSave = func(user *User) error {
-
-	if user.IsTransient() {
-		cmd := `INSERT INTO users(name, email, hashed_password, auth_token, is_admin, is_service, date_created)
-				VALUES($1, $2, $3, $4, $5, $6, $7)
-				RETURNING id`
-
-		statement, err := db.Prepare(cmd)
-		if err != nil {
-			return err
-		}
-		defer statement.Close()
-
-		err = statement.
-			QueryRow(user.Email, user.HashedPassword, user.IsAdmin, user.DateCreated).
-			Scan(&user.ID)
-		if err != nil {
-			return err
-		}
-	} else {
-		cmd := `UPDATE users
-				SET name = $2,
-					email = $3,
-					hashed_password = $4,
-					auth_token = $5,
-					is_admin = $6,
-					is_service = $7,
-					date_created = $8
-				WHERE id = $1`
-
-		_, err := db.Exec(cmd, user.ID, user.Name, user.Email, user.HashedPassword, user.AuthToken, user.IsAdmin, user.IsService, user.DateCreated)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return EntitySave(user)
 }
 
 // Save saves the User struct to the database.
@@ -78,11 +43,7 @@ func (user *User) Save() error {
 
 // UserDelete deletes the User from the database
 var UserDelete = func(user *User) error {
-	cmd := `DELETE FROM users
-			WHERE id = $1`
-
-	_, err := db.Exec(cmd, user.ID)
-	return err
+	return EntityDelete(user)
 }
 
 // Delete deletes the User from the database
@@ -98,20 +59,8 @@ var UserFromID = func(id string) (User, error) {
 		return user, ErrEntityNotFound
 	}
 
-	cmd := `SELECT name, email, hashed_password, auth_token, is_admin, is_service, date_created
-			FROM users
-			WHERE id = $1`
-
-	err := db.QueryRow(cmd, id).
-		Scan(&user.Name, &user.Email, &user.HashedPassword, &user.AuthToken, &user.IsAdmin, &user.IsService, &user.DateCreated)
-	if err == sql.ErrNoRows {
-		return user, ErrEntityNotFound
-	} else if err != nil {
-		return user, err
-	}
-
-	user.ID = id
-	return user, nil
+	err := EntityGetByID(&user, id)
+	return user, err
 }
 
 // UserFromEmail returns the User record matching an email address
