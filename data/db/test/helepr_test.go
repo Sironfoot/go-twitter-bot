@@ -101,10 +101,48 @@ func TestGenerateGetAllStatement(t *testing.T) {
 		t.Errorf("actual SQL statement was:\n\n%s\n\nbut expected:\n\n%s", actual, expected)
 	}
 }
+
+func TestEntityGetByID(t *testing.T) {
+	mustSetUp()
+	defer mustTearDown()
+
+	testUser, err := createTestUser()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	user := db.User{}
+	err = db.EntityGetByID(&user, testUser.ID)
+	if err != nil && err != db.ErrEntityNotFound {
+		t.Fatal(err)
+	}
+
+	if err == db.ErrEntityNotFound {
+		t.Errorf("Expected user record, but got ErrEntityNotFound")
+	}
+
+	if !usersAreSame(testUser, user) {
+		t.Errorf("Expected user and actual user don't match,\nuser:\t\t%v,\ntestUser:\t%v", user, testUser)
+	}
+
+	// test mismatch ID types
+	err = db.EntityGetByID(&user, 123)
+	if err == nil {
+		t.Error("using mismatched ID types should return an error")
+	}
+
+	// record not found
+	err = db.EntityGetByID(&user, "089fe8c2-05ab-11e6-9e18-b32d264e490b")
+	if err != db.ErrEntityNotFound {
+		t.Errorf("non-existant ID should return 'ErrEntityNotFound' error, error was: %s", err)
+	}
+}
+
 func TestEntitySave(t *testing.T) {
 	mustSetUp()
 	defer mustTearDown()
 
+	// CREATE record
 	user := db.User{
 		Name:           "Test User",
 		Email:          "test@example.com",
@@ -124,6 +162,7 @@ func TestEntitySave(t *testing.T) {
 		t.Errorf("user is still in a transient state (non-saved), user ID: %s", user.ID)
 	}
 
+	// UPDATE record
 	user.Name = "Updated User"
 	user.Email = "updated@example.com"
 	user.HashedPassword = "UpdatedPassword1"

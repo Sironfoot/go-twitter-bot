@@ -78,7 +78,7 @@ func mustTearDown() {
 	return
 }
 
-func createTestUser() (user db.User, err error) {
+func createTestUser() (db.User, error) {
 	return createTestUserWithProperties("Test User", "test@example.com")
 }
 
