@@ -273,3 +273,26 @@ func EntitySave(entity Entity) error {
 
 	return nil
 }
+
+func EntityDelete(entity Entity) error {
+	metaData := entity.MetaData()
+
+	var pkFieldValue reflect.Value
+
+	val := reflect.ValueOf(entity).Elem()
+	entityType := val.Type()
+
+	for i := 0; i < val.NumField(); i++ {
+		fieldInfo := entityType.Field(i)
+		tag := fieldInfo.Tag
+		columnName := strings.TrimSpace(tag.Get("db"))
+
+		if columnName == metaData.PrimaryKeyName {
+			pkFieldValue = val.Field(i)
+		}
+	}
+
+	deleteSQL := GenerateDeleteByIDStatement(entity)
+	_, err := db.Exec(deleteSQL, pkFieldValue.Interface())
+	return err
+}

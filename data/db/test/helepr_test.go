@@ -182,3 +182,45 @@ func TestEntitySave(t *testing.T) {
 		t.Errorf("user ID was updated from %s to %s", previousID, user.ID)
 	}
 }
+
+func TestEntityDelete(t *testing.T) {
+	mustSetUp()
+	defer mustTearDown()
+
+	// arrange - create the record
+	userToSave := db.User{
+		Name:           "Test User",
+		Email:          "test@example.com",
+		HashedPassword: "Password1_",
+		AuthToken:      sql.NullString{String: "my_auth_token", Valid: true},
+		IsAdmin:        true,
+		IsService:      false,
+		DateCreated:    time.Now().UTC(),
+	}
+
+	err := db.EntitySave(&userToSave)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	userID := userToSave.ID
+
+	// get the user
+	user := db.User{}
+	err = db.EntityGetByID(&user, userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// act - delete the user
+	err = db.EntityDelete(&user)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// assert - check user exists
+	err = db.EntityGetByID(&db.User{}, userID)
+	if err != db.ErrEntityNotFound {
+		t.Errorf("should return error 'ErrEntityNotFound' for no record found, error was: %s", err)
+	}
+}
