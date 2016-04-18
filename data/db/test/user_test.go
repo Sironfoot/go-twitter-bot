@@ -20,53 +20,6 @@ func usersAreSame(user1, user2 db.User) bool {
 		user1.DateCreated.Unix() == user2.DateCreated.Unix() // accurate to nearest second
 }
 
-func TestUserFromID(t *testing.T) {
-	mustSetUp()
-	defer mustTearDown()
-
-	// arrange
-	testUser, err := createTestUser()
-
-	// Non-existent record - Valid UUID
-	// act
-	user, err := db.UserFromID("ec24d9b2-fb39-11e5-9dcc-df8c5db12101")
-	if err != nil && err != db.ErrEntityNotFound {
-		t.Fatal(err)
-	}
-
-	// assert
-	if err != db.ErrEntityNotFound {
-		t.Errorf("user entity was returned from non-existent ID, userID: %s", user.ID)
-	}
-
-	// Non-existent record - Invalid UUID
-	user, err = db.UserFromID("Nonsense")
-	if err != nil && err != db.ErrEntityNotFound {
-		t.Fatal(err)
-	}
-
-	// assert
-	if err != db.ErrEntityNotFound {
-		t.Errorf("user entity was returned from non-existent invalid ID, userID: %s", user.ID)
-	}
-
-	// Existing record
-	// act
-	user, err = db.UserFromID(testUser.ID)
-	if err != nil && err != db.ErrEntityNotFound {
-		t.Fatal(err)
-	}
-
-	// assert
-	if err == db.ErrEntityNotFound {
-		t.Errorf("Expected user record, but got ErrEntityNotFound")
-	}
-
-	if !usersAreSame(user, testUser) {
-		t.Errorf("Expected user and actual user don't match,\nuser:\t\t%v,\ntestUser:\t%v", user, testUser)
-	}
-}
-
 func TestUserFromEmail(t *testing.T) {
 	mustSetUp()
 	defer mustTearDown()
