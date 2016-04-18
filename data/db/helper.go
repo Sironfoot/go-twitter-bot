@@ -142,3 +142,93 @@ func GenerateGetAllStatement(entity Entity, where string) string {
 
 	return cmd
 }
+
+// EntitySave saves (either INSERTs or UPDATEs) an entity to the database
+func EntitySave(entity Entity) error {
+	metaData := entity.MetaData()
+
+	var fields []interface{}
+	var pkFieldValue reflect.Value
+
+	val := reflect.ValueOf(entity).Elem()
+	entityType := val.Type()
+
+	for i := 0; i < val.NumField(); i++ {
+		fieldInfo := entityType.Field(i)
+		tag := fieldInfo.Tag
+		columnName := strings.TrimSpace(tag.Get("db"))
+
+		if columnName != "" && columnName != metaData.PrimaryKeyName {
+			field := val.Field(i)
+
+			switch field.Kind() {
+			case reflect.String:
+				fields = append(fields, field.String())
+			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+				fields = append(fields, field.Int())
+			case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+				fields = append(fields, field.Uint())
+			case reflect.Float32, reflect.Float64:
+				fields = append(fields, field.Float())
+			case reflect.Bool:
+				fields = append(fields, field.Bool())
+			case reflect.Struct:
+				fields = append(fields, field.Interface())
+			}
+		}
+
+		if columnName == metaData.PrimaryKeyName {
+			pkFieldValue = val.Field(i)
+		}
+	}
+
+	if entity.IsTransient() {
+		insertSQL := GenerateInsertStatement(entity)
+
+		statement, err := db.Prepare(insertSQL)
+		if err != nil {
+			return err
+		}
+		defer statement.Close()
+
+		row := statement.QueryRow(fields...)
+
+		switch pkFieldValue.Kind() {
+		case reflect.String:
+			var id string
+			err = row.Scan(&id)
+			if err == nil {
+				pkFieldValue.SetString(id)
+			}
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			var id int64
+			err = row.Scan(&id)
+			if err == nil {
+				pkFieldValue.SetInt(id)
+			}
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			var id uint64
+			err = row.Scan(&id)
+			if err == nil {
+				pkFieldValue.SetUint(id)
+			}
+		default:
+			err = fmt.Errorf("Entity (%s) primary key ID is a type (%s) that is not supported.",
+				entityType.Name(), pkFieldValue.Kind().String())
+		}
+
+		if err != nil {
+			return err
+		}
+	} else {
+		updateSQL := GenerateUpdateStatement(entity)
+		fields = append([]interface{}{pkFieldValue.Interface()}, fields...)
+
+		_, err := db.Exec(updateSQL, fields...)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
