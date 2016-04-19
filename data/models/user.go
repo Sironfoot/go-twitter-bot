@@ -5,6 +5,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/sironfoot/go-twitter-bot/data/db"
+	"github.com/sironfoot/go-twitter-bot/lib/sqlboiler"
 )
 
 // User represents a model for creating/updating a user posted to
@@ -58,11 +59,11 @@ func (user *User) ValidateCreate() ([]ValidationError, error) {
 	}
 
 	_, err = db.UserFromEmail(user.Email)
-	if err != nil && err != db.ErrEntityNotFound {
+	if err != nil && err != sqlboiler.ErrEntityNotFound {
 		return nil, err
 	}
 
-	if err != db.ErrEntityNotFound {
+	if err != sqlboiler.ErrEntityNotFound {
 		validationErrors = append(validationErrors, ValidationError{
 			FieldName: "email",
 			Type:      ValidationTypeNotUnique,
@@ -82,7 +83,7 @@ func (user *User) ValidateUpdate(id string) ([]ValidationError, error) {
 	}
 
 	existingUser, err := db.UserFromEmail(user.Email)
-	if err != db.ErrEntityNotFound {
+	if err != sqlboiler.ErrEntityNotFound {
 		if err != nil {
 			return nil, err
 		}

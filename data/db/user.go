@@ -3,6 +3,8 @@ package db
 import (
 	"database/sql"
 	"time"
+
+	"github.com/sironfoot/go-twitter-bot/lib/sqlboiler"
 )
 
 // User maps to users table
@@ -24,8 +26,8 @@ func (user *User) IsTransient() bool {
 }
 
 // MetaData returns meta data information about the User entity
-func (user *User) MetaData() EntityMetaData {
-	return EntityMetaData{
+func (user *User) MetaData() sqlboiler.EntityMetaData {
+	return sqlboiler.EntityMetaData{
 		TableName:      "users",
 		PrimaryKeyName: "id",
 	}
@@ -33,7 +35,7 @@ func (user *User) MetaData() EntityMetaData {
 
 // UserSave saves the User struct to the database.
 var UserSave = func(user *User) error {
-	return EntitySave(user)
+	return sqlboiler.EntitySave(user, db)
 }
 
 // Save saves the User struct to the database.
@@ -43,7 +45,7 @@ func (user *User) Save() error {
 
 // UserDelete deletes the User from the database
 var UserDelete = func(user *User) error {
-	return EntityDelete(user)
+	return sqlboiler.EntityDelete(user, db)
 }
 
 // Delete deletes the User from the database
@@ -56,10 +58,10 @@ var UserFromID = func(id string) (User, error) {
 	var user User
 
 	if !isUUID.MatchString(id) {
-		return user, ErrEntityNotFound
+		return user, sqlboiler.ErrEntityNotFound
 	}
 
-	err := EntityGetByID(&user, id)
+	err := sqlboiler.EntityGetByID(&user, id, db)
 	return user, err
 }
 
@@ -74,7 +76,7 @@ var UserFromEmail = func(email string) (User, error) {
 	err := db.QueryRow(cmd, email).
 		Scan(&user.ID, &user.Name, &user.Email, &user.HashedPassword, &user.AuthToken, &user.IsAdmin, &user.IsService, &user.DateCreated)
 	if err == sql.ErrNoRows {
-		return user, ErrEntityNotFound
+		return user, sqlboiler.ErrEntityNotFound
 	} else if err != nil {
 		return user, err
 	}

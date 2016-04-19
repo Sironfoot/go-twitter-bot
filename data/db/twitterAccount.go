@@ -1,6 +1,10 @@
 package db
 
-import "time"
+import (
+	"time"
+
+	"github.com/sironfoot/go-twitter-bot/lib/sqlboiler"
+)
 
 // TwitterAccount maps to twitter_accounts table
 type TwitterAccount struct {
@@ -21,8 +25,8 @@ func (account *TwitterAccount) IsTransient() bool {
 }
 
 // MetaData returns meta data information about the TwitterAccount entity
-func (account *TwitterAccount) MetaData() EntityMetaData {
-	return EntityMetaData{
+func (account *TwitterAccount) MetaData() sqlboiler.EntityMetaData {
+	return sqlboiler.EntityMetaData{
 		TableName:      "twitter_accounts",
 		PrimaryKeyName: "id",
 	}
@@ -30,7 +34,7 @@ func (account *TwitterAccount) MetaData() EntityMetaData {
 
 // TwitterAccountSave saves the TwitterAccount struct to the database.
 var TwitterAccountSave = func(account *TwitterAccount) error {
-	return EntitySave(account)
+	return sqlboiler.EntitySave(account, db)
 }
 
 // Save saves the TwitterAccount struct to the database.
@@ -40,7 +44,7 @@ func (account *TwitterAccount) Save() error {
 
 // TwitterAccountDelete deletes the TwitterAccount from the database
 var TwitterAccountDelete = func(account *TwitterAccount) error {
-	return EntityDelete(account)
+	return sqlboiler.EntityDelete(account, db)
 }
 
 // Delete deletes the TwitterAccount from the database
@@ -53,10 +57,10 @@ var TwitterAccountFromID = func(id string) (TwitterAccount, error) {
 	var account TwitterAccount
 
 	if !isUUID.MatchString(id) {
-		return account, ErrEntityNotFound
+		return account, sqlboiler.ErrEntityNotFound
 	}
 
-	err := EntityGetByID(&account, id)
+	err := sqlboiler.EntityGetByID(&account, id, db)
 	return account, err
 }
 

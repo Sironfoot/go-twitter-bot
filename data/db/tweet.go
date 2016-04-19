@@ -3,6 +3,8 @@ package db
 import (
 	"fmt"
 	"time"
+
+	"github.com/sironfoot/go-twitter-bot/lib/sqlboiler"
 )
 
 // Tweet maps to tweets table
@@ -22,8 +24,8 @@ func (tweet *Tweet) IsTransient() bool {
 }
 
 // MetaData returns meta data information about the Tweet entity
-func (tweet *Tweet) MetaData() EntityMetaData {
-	return EntityMetaData{
+func (tweet *Tweet) MetaData() sqlboiler.EntityMetaData {
+	return sqlboiler.EntityMetaData{
 		TableName:      "tweets",
 		PrimaryKeyName: "id",
 	}
@@ -73,7 +75,7 @@ func (tweet *Tweet) Save() error {
 
 // TweetDelete deletes the Tweet from the database
 var TweetDelete = func(tweet *Tweet) error {
-	return EntityDelete(tweet)
+	return sqlboiler.EntityDelete(tweet, db)
 }
 
 // Delete deletes the Tweet from the database

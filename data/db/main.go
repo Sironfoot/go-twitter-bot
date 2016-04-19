@@ -2,7 +2,6 @@ package db
 
 import (
 	"database/sql"
-	"errors"
 	"regexp"
 
 	_ "github.com/lib/pq" // initialise postgresql DB provider
@@ -20,16 +19,6 @@ func InitDB(connectionString string) (err error) {
 func CloseDB() error {
 	return db.Close()
 }
-
-// Entity represents interface that all database mapped structs implement
-type Entity interface {
-	IsTransient() bool
-	MetaData() EntityMetaData
-}
-
-// ErrEntityNotFound is returned when a database Entity is not found, returned
-// from functions that return a single Entity (e.g. EntityFromID)
-var ErrEntityNotFound = errors.New("db: Entity not found")
 
 // QueryAll is a general purpose query struct for returning Entities
 type QueryAll struct {

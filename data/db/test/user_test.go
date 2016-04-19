@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/sironfoot/go-twitter-bot/data/db"
+	"github.com/sironfoot/go-twitter-bot/lib/sqlboiler"
 )
 
 func usersAreSame(user1, user2 db.User) bool {
@@ -30,24 +31,24 @@ func TestUserFromEmail(t *testing.T) {
 	// Non-existent record
 	// act
 	user, err := db.UserFromEmail("Nonsense@example.com")
-	if err != nil && err != db.ErrEntityNotFound {
+	if err != nil && err != sqlboiler.ErrEntityNotFound {
 		t.Fatal(err)
 	}
 
 	// assert
-	if err != db.ErrEntityNotFound {
+	if err != sqlboiler.ErrEntityNotFound {
 		t.Errorf("user entity was returned from non-existent email address, userEmail: %s", user.Email)
 	}
 
 	// Existing record
 	// act
 	user, err = db.UserFromEmail(testUser.Email)
-	if err != nil && err != db.ErrEntityNotFound {
+	if err != nil && err != sqlboiler.ErrEntityNotFound {
 		t.Fatal(err)
 	}
 
 	// assert
-	if err == db.ErrEntityNotFound {
+	if err == sqlboiler.ErrEntityNotFound {
 		t.Errorf("Expected user record, but got ErrEntityNotFound")
 	}
 
