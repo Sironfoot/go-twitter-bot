@@ -19,6 +19,17 @@ var columnNames = []string{
 	"date_created",
 }
 
+func TestGenerateColumnList(t *testing.T) {
+	user := db.User{}
+
+	expected := strings.Join(columnNames, ", ")
+	actual := db.GetColumnListString(&user)
+
+	if expected != actual {
+		t.Errorf("actual column list was:\n\n%s\n\nbut expected:\n\n%s", actual, expected)
+	}
+}
+
 func TestGenerateInsertStatement(t *testing.T) {
 	user := db.User{}
 

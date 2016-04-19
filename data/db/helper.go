@@ -15,17 +15,15 @@ type EntityMetaData struct {
 	PrimaryKeyName string
 }
 
-// GenerateInsertStatement generates an SQL command for inserting a record into the database
-func GenerateInsertStatement(entity Entity) string {
+// GetColumnList returns a slice of all the column names for a DB
+// Entity struct (as specified by thier tags), except the PK ID
+func GetColumnList(entity Entity) []string {
 	metaData := entity.MetaData()
 
-	insertLine := "INSERT INTO " + metaData.TableName + "("
-	valuesLine := "VALUES("
+	var columnList []string
 
 	val := reflect.ValueOf(entity).Elem()
 	entityType := val.Type()
-
-	placeholder := 1
 
 	for i := 0; i < val.NumField(); i++ {
 		fieldInfo := entityType.Field(i)
@@ -33,16 +31,34 @@ func GenerateInsertStatement(entity Entity) string {
 		columnName := strings.TrimSpace(tag.Get("db"))
 
 		if columnName != "" && columnName != metaData.PrimaryKeyName {
-			insertLine += columnName + ", "
-			valuesLine += fmt.Sprintf("$%d, ", placeholder)
-			placeholder++
+			columnList = append(columnList, columnName)
 		}
 	}
 
-	insertLine = insertLine[:len(insertLine)-2] + ") "
-	valuesLine = valuesLine[:len(valuesLine)-2] + ") "
+	return columnList
+}
 
-	return insertLine + valuesLine + "RETURNING " + metaData.PrimaryKeyName
+// GetColumnListString returns a comma separated string of all the column
+// names for a DB Entity struct (as specified by thier tags), except the PK ID
+func GetColumnListString(entity Entity) string {
+	return strings.Join(GetColumnList(entity), ", ")
+}
+
+// GenerateInsertStatement generates an SQL command for inserting a record into the database
+func GenerateInsertStatement(entity Entity) string {
+	metaData := entity.MetaData()
+
+	columns := GetColumnList(entity)
+
+	cmd := "INSERT INTO " + metaData.TableName + "(" + strings.Join(columns, ", ") + ") " +
+		"VALUES("
+
+	for i := range columns {
+		cmd += fmt.Sprintf("$%d, ", i+1)
+	}
+
+	return cmd[:len(cmd)-2] + ") " +
+		"RETURNING " + metaData.PrimaryKeyName
 }
 
 // GenerateUpdateStatement generates an SQL command for updating a record to the database
@@ -51,20 +67,9 @@ func GenerateUpdateStatement(entity Entity) string {
 
 	cmd := "UPDATE " + metaData.TableName + " SET "
 
-	val := reflect.ValueOf(entity).Elem()
-	entityType := val.Type()
-
-	placeholder := 2
-
-	for i := 0; i < val.NumField(); i++ {
-		fieldInfo := entityType.Field(i)
-		tag := fieldInfo.Tag
-		columnName := strings.TrimSpace(tag.Get("db"))
-
-		if columnName != "" && columnName != metaData.PrimaryKeyName {
-			cmd += fmt.Sprintf("%s = $%d, ", columnName, placeholder)
-			placeholder++
-		}
+	columns := GetColumnList(entity)
+	for i, columnName := range columns {
+		cmd += fmt.Sprintf("%s = $%d, ", columnName, i+2)
 	}
 
 	cmd = cmd[:len(cmd)-2]
@@ -81,22 +86,7 @@ func GenerateDeleteByIDStatement(entity Entity) string {
 func GenerateGetByIDStatement(entity Entity) string {
 	metaData := entity.MetaData()
 
-	var columnNames []string
-
-	val := reflect.ValueOf(entity).Elem()
-	entityType := val.Type()
-
-	for i := 0; i < val.NumField(); i++ {
-		fieldInfo := entityType.Field(i)
-		tag := fieldInfo.Tag
-		columnName := strings.TrimSpace(tag.Get("db"))
-
-		if columnName != "" && columnName != metaData.PrimaryKeyName {
-			columnNames = append(columnNames, columnName)
-		}
-	}
-
-	return "SELECT " + strings.Join(columnNames, ", ") + " " +
+	return "SELECT " + GetColumnListString(entity) + " " +
 		"FROM " + metaData.TableName + " " +
 		"WHERE " + metaData.PrimaryKeyName + " = $1"
 }
