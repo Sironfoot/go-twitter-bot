@@ -21,6 +21,14 @@ func (tweet *Tweet) IsTransient() bool {
 	return len(tweet.ID) == 0
 }
 
+// MetaData returns meta data information about the Tweet entity
+func (tweet *Tweet) MetaData() EntityMetaData {
+	return EntityMetaData{
+		TableName:      "tweets",
+		PrimaryKeyName: "id",
+	}
+}
+
 // TweetSave saves the Tweet struct to the database.
 var TweetSave = func(tweet *Tweet) error {
 	if tweet.IsTransient() {
@@ -65,11 +73,7 @@ func (tweet *Tweet) Save() error {
 
 // TweetDelete deletes the Tweet from the database
 var TweetDelete = func(tweet *Tweet) error {
-	cmd := `DELETE FROM tweets
-		    WHERE id = $1`
-
-	_, err := db.Exec(cmd, tweet.ID)
-	return err
+	return EntityDelete(tweet)
 }
 
 // Delete deletes the Tweet from the database

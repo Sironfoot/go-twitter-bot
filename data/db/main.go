@@ -25,9 +25,6 @@ func CloseDB() error {
 type Entity interface {
 	IsTransient() bool
 	MetaData() EntityMetaData
-
-	Save() error
-	Delete() error
 }
 
 // ErrEntityNotFound is returned when a database Entity is not found, returned

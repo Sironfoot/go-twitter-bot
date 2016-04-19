@@ -1,9 +1,6 @@
 package db
 
-import (
-	"database/sql"
-	"time"
-)
+import "time"
 
 // TwitterAccount maps to twitter_accounts table
 type TwitterAccount struct {
@@ -23,67 +20,17 @@ func (account *TwitterAccount) IsTransient() bool {
 	return len(account.ID) == 0
 }
 
+// MetaData returns meta data information about the TwitterAccount entity
+func (account *TwitterAccount) MetaData() EntityMetaData {
+	return EntityMetaData{
+		TableName:      "twitter_accounts",
+		PrimaryKeyName: "id",
+	}
+}
+
 // TwitterAccountSave saves the TwitterAccount struct to the database.
 var TwitterAccountSave = func(account *TwitterAccount) error {
-	if account.IsTransient() {
-		cmd := `INSERT INTO twitter_accounts
-				(
-					user_id,
-					username,
-					date_created,
-					consumer_key,
-					consumer_secret,
-					access_token,
-					access_token_secret
-				)
-				VALUES($1, $2, $3, $4, $5, $6, $7)
-				RETURNING id`
-
-		statement, err := db.Prepare(cmd)
-		if err != nil {
-			return err
-		}
-		defer statement.Close()
-
-		err = statement.
-			QueryRow(
-				account.UserID,
-				account.Username,
-				account.DateCreated,
-				account.ConsumerKey,
-				account.ConsumerSecret,
-				account.AccessToken,
-				account.AccessTokenSecret).
-			Scan(&account.ID)
-		if err != nil {
-			return err
-		}
-	} else {
-		cmd := `UPDATE twitter_accounts
-				SET user_id = $2,
-					username = $3,
-					date_created = $4,
-					consumer_key = $5,
-					consumer_secret = $6,
-					access_token = $7,
-					access_token_secret = $8
-				WHERE id = $1`
-
-		_, err := db.Exec(cmd,
-			account.ID,
-			account.UserID,
-			account.Username,
-			account.DateCreated,
-			account.ConsumerKey,
-			account.ConsumerSecret,
-			account.AccessToken,
-			account.AccessTokenSecret)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return EntitySave(account)
 }
 
 // Save saves the TwitterAccount struct to the database.
@@ -93,11 +40,7 @@ func (account *TwitterAccount) Save() error {
 
 // TwitterAccountDelete deletes the TwitterAccount from the database
 var TwitterAccountDelete = func(account *TwitterAccount) error {
-	cmd := `DELETE FROM twitter_accounts
-			WHERE id = $1`
-
-	_, err := db.Exec(cmd, account.ID)
-	return err
+	return EntityDelete(account)
 }
 
 // Delete deletes the TwitterAccount from the database
@@ -109,33 +52,12 @@ func (account *TwitterAccount) Delete() error {
 var TwitterAccountFromID = func(id string) (TwitterAccount, error) {
 	var account TwitterAccount
 
-	cmd := `SELECT
-				user_id,
-				username,
-				date_created,
-				consumer_key,
-				consumer_secret,
-				access_token,
-				access_token_secret
-			FROM twitter_accounts
-			WHERE id = $1`
-
-	err := db.QueryRow(cmd, id).
-		Scan(&account.UserID,
-			&account.Username,
-			&account.DateCreated,
-			&account.ConsumerKey,
-			&account.ConsumerSecret,
-			&account.AccessToken,
-			&account.AccessTokenSecret)
-	if err == sql.ErrNoRows {
+	if !isUUID.MatchString(id) {
 		return account, ErrEntityNotFound
-	} else if err != nil {
-		return account, err
 	}
 
-	account.ID = id
-	return account, nil
+	err := EntityGetByID(&account, id)
+	return account, err
 }
 
 // TwitterAccountsAll returns all TwitterAccount records from the database
