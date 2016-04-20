@@ -22,9 +22,11 @@ func userSetUp() {
 		if email == existingUserEmail {
 			return db.User{
 				ID:             existingUserID,
+				Name:           "Test Iser",
 				Email:          existingUserEmail,
 				HashedPassword: "Password1",
 				IsAdmin:        true,
+				IsService:      false,
 				DateCreated:    time.Now(),
 			}, nil
 		}
@@ -41,26 +43,34 @@ var commonTestCases = []testCase{
 	{
 		description: "no errors",
 		model: &models.User{
+			Name:     "Test User",
 			Email:    "someone@example.com",
 			Password: "Password1",
 		},
-		expectedErrors: map[string]string{},
+		expectedErrors: []expectedError{},
 	},
 	{
 		description: "email address invalid format",
 		model: &models.User{
+			Name:     "Test User",
 			Email:    "Invalid",
 			Password: "Password1",
 		},
-		expectedErrors: map[string]string{"email": models.ValidationTypeInvalid},
+		expectedErrors: []expectedError{
+			{"email", models.ValidationTypeInvalid},
+		},
 	},
 	{
 		description: "email required",
 		model: &models.User{
+			Name:     "Test User",
 			Email:    "",
 			Password: "Password1",
 		},
-		expectedErrors: map[string]string{"email": models.ValidationTypeRequired},
+		expectedErrors: []expectedError{
+			{"email", models.ValidationTypeRequired},
+			{"email", models.ValidationTypeInvalid},
+		},
 	},
 }
 
@@ -72,26 +82,36 @@ func TestUserValidateCreate(t *testing.T) {
 		{
 			description: "email not unique",
 			model: &models.User{
+				Name:     "Test User",
 				Email:    existingUserEmail,
 				Password: "Password1",
 			},
-			expectedErrors: map[string]string{"email": models.ValidationTypeNotUnique},
+			expectedErrors: []expectedError{
+				{"email", models.ValidationTypeNotUnique},
+			},
 		},
 		{
 			description: "password required",
 			model: &models.User{
+				Name:     "Test User",
 				Email:    "someone@example.com",
 				Password: "",
 			},
-			expectedErrors: map[string]string{"password": models.ValidationTypeRequired},
+			expectedErrors: []expectedError{
+				{"password", models.ValidationTypeRequired},
+				{"password", models.ValidationTypeMinLength},
+			},
 		},
 		{
 			description: "password is too short",
 			model: &models.User{
+				Name:     "Test User",
 				Email:    "someone@example.com",
 				Password: "1234567",
 			},
-			expectedErrors: map[string]string{"password": models.ValidationTypeMinLength},
+			expectedErrors: []expectedError{
+				{"password", models.ValidationTypeMinLength},
+			},
 		},
 	}
 
@@ -113,18 +133,20 @@ func TestUserValidateUpdate(t *testing.T) {
 			description: "updating existing user",
 			id:          existingUserID,
 			model: &models.User{
+				Name:     "Test User",
 				Email:    existingUserEmail,
 				Password: "Password1",
 			},
-			expectedErrors: map[string]string{},
+			expectedErrors: []expectedError{},
 		},
 		{
 			description: "password can be blank",
 			id:          existingUserID,
 			model: &models.User{
+				Name:  "Test User",
 				Email: existingUserEmail,
 			},
-			expectedErrors: map[string]string{},
+			expectedErrors: []expectedError{},
 		},
 	}
 

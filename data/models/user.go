@@ -2,7 +2,6 @@ package models
 
 import (
 	"strings"
-	"unicode/utf8"
 
 	"github.com/sironfoot/go-twitter-bot/data/db"
 	"github.com/sironfoot/go-twitter-bot/lib/sqlboiler"
@@ -11,28 +10,30 @@ import (
 // User represents a model for creating/updating a user posted to
 // the create/update user REST API endpoints, complete with validation
 type User struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-	IsAdmin  bool   `json:"isAdmin"`
+	Name      string `json:"name"`
+	Email     string `json:"email"`
+	Password  string `json:"password"`
+	IsAdmin   bool   `json:"isAdmin"`
+	IsService bool   `json:"isService"`
+}
+
+// TrimFields trims whitespace from start and end of fields
+// that are appropriate for trimming
+func (user *User) TrimFields() {
+	user.Name = strings.TrimSpace(user.Name)
+	user.Email = strings.TrimSpace(user.Email)
 }
 
 // Validate provides validation logic for creating or updating a User
 func (user *User) Validate() ([]ValidationError, error) {
 	var validationErrors []ValidationError
 
-	if strings.TrimSpace(user.Email) == "" {
-		validationErrors = append(validationErrors, ValidationError{
-			FieldName: "email",
-			Type:      ValidationTypeRequired,
-			Message:   "'email' address is required.",
-		})
-	} else if !isEmail.MatchString(user.Email) {
-		validationErrors = append(validationErrors, ValidationError{
-			FieldName: "email",
-			Type:      ValidationTypeInvalid,
-			Message:   "'email' is not a valid email address.",
-		})
-	}
+	validationErrors = validateRequired(validationErrors, user.Name, "name")
+	validationErrors = validateMaxLength(validationErrors, user.Name, 50, "name")
+
+	validationErrors = validateRequired(validationErrors, user.Email, "email")
+	validationErrors = validateMaxLength(validationErrors, user.Email, 200, "email")
+	validationErrors = validateEmail(validationErrors, user.Email, "email")
 
 	return validationErrors, nil
 }
@@ -44,19 +45,8 @@ func (user *User) ValidateCreate() ([]ValidationError, error) {
 		return nil, err
 	}
 
-	if strings.TrimSpace(user.Password) == "" {
-		validationErrors = append(validationErrors, ValidationError{
-			FieldName: "password",
-			Type:      ValidationTypeRequired,
-			Message:   "'password' is required.",
-		})
-	} else if utf8.RuneCountInString(user.Password) < 8 {
-		validationErrors = append(validationErrors, ValidationError{
-			FieldName: "password",
-			Type:      ValidationTypeMinLength,
-			Message:   "'password' must be at least 8 characters.",
-		})
-	}
+	validationErrors = validateRequired(validationErrors, user.Password, "password")
+	validationErrors = validateMinLength(validationErrors, user.Password, 8, "password")
 
 	_, err = db.UserFromEmail(user.Email)
 	if err != nil && err != sqlboiler.ErrEntityNotFound {

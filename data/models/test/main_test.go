@@ -10,7 +10,12 @@ type testCase struct {
 	description    string
 	model          models.Model
 	id             string
-	expectedErrors map[string]string
+	expectedErrors []expectedError
+}
+
+type expectedError struct {
+	fieldName string
+	typeName  string
 }
 
 func runValidationTest(t *testing.T, testCases []testCase, runValidation func(model models.Model, id string) ([]models.ValidationError, error)) {
@@ -25,16 +30,18 @@ func runValidationTest(t *testing.T, testCases []testCase, runValidation func(mo
 				testCase.description, len(testCase.expectedErrors), len(validationErrors), validationErrors)
 		} else {
 			for _, validationError := range validationErrors {
-				expectedType, ok := testCase.expectedErrors[validationError.FieldName]
-
-				if !ok {
-					t.Errorf("test case '%s': validationError field '%s' wasn't expected",
-						testCase.description, validationError.FieldName)
+				found := false
+				for _, expectedError := range testCase.expectedErrors {
+					if expectedError.fieldName == validationError.FieldName &&
+						expectedError.typeName == validationError.Type {
+						found = true
+						break
+					}
 				}
 
-				if ok && validationError.Type != expectedType {
-					t.Errorf("test case '%s': validationError field '%s' type (%s) doesn't match expected type (%s)",
-						testCase.description, validationError.FieldName, validationError.Type, expectedType)
+				if !found {
+					t.Errorf("test case '%s': validationError field '%s(%s)' wasn't found",
+						testCase.description, validationError.FieldName, validationError.Type)
 				}
 			}
 		}
