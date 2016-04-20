@@ -92,59 +92,41 @@ const (
 )
 
 // UsersAll returns all User records from the database
-var UsersAll = func(query QueryAll) ([]User, error) {
+var UsersAll = func(query PagingInfo) ([]User, int, error) {
 	var users []User
+	recordCount := 0
 
 	orderBy := query.OrderBy
-	if query.OrderAsc {
+	if query.Asc {
 		orderBy += " ASC"
 	} else {
 		orderBy += " DESC"
 	}
 
-	var rows *sql.Rows
-	var err error
+	cmd := "SELECT id, " + sqlboiler.GetColumnListString(&User{}) + " " +
+		"FROM users " +
+		"ORDER BY $1 " +
+		"LIMIT $2 OFFSET $3"
 
-	if after, ok := query.After.(string); ok && query.OrderBy == UsersOrderByEmail {
-		cmd := `SELECT id, name, email, hashed_password, auth_token, is_admin, is_service, date_created
-			    FROM users
-				WHERE id > (SELECT id FROM users WHERE email = $1)
-				ORDER BY $2
-			    LIMIT $3`
-
-		rows, err = db.Query(cmd, after, orderBy, query.Limit)
-	} else if after, ok := query.After.(time.Time); ok && query.OrderBy == UsersOrderByDateCreated {
-		cmd := `SELECT id, name, email, hashed_password, auth_token, is_admin, is_service, date_created
-			    FROM users
-				WHERE date_created > $1
-				ORDER BY $2
-			    LIMIT $3`
-
-		rows, err = db.Query(cmd, after, orderBy, query.Limit)
-	} else {
-		cmd := `SELECT id, name, email, hashed_password, auth_token, is_admin, is_service, date_created
-			    FROM users
-			    ORDER BY $1
-			    LIMIT $2`
-
-		rows, err = db.Query(cmd, orderBy, query.Limit)
-	}
-
+	rows, err := db.Query(cmd, orderBy, query.Limit, query.Offset)
 	if err != nil {
-		return nil, err
+		return nil, recordCount, err
 	}
 
 	defer rows.Close()
 
 	for rows.Next() {
 		user := User{}
-		err := rows.Scan(&user.ID, &user.Name, &user.Email, &user.HashedPassword, &user.AuthToken, &user.IsAdmin, &user.IsService, &user.DateCreated)
+		err = rows.Scan(&user.ID, &user.Name, &user.Email, &user.HashedPassword, &user.AuthToken, &user.IsAdmin, &user.IsService, &user.DateCreated)
 		if err != nil {
-			return nil, err
+			return nil, recordCount, err
 		}
 
 		users = append(users, user)
 	}
 
-	return users, nil
+	countCmd := "SELECT COUNT(*) FROM users"
+	err = db.QueryRow(countCmd).Scan(&recordCount)
+
+	return users, recordCount, err
 }

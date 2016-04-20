@@ -19,12 +19,20 @@ type User struct {
 	Name        string    `json:"name"`
 	Email       string    `json:"email"`
 	IsAdmin     bool      `json:"isAdmin"`
+	IsService   bool      `json:"isService"`
 	DateCreated time.Time `json:"dateCreated"`
 }
 
 // UsersAll = GET: /users
 func UsersAll(res http.ResponseWriter, req *http.Request) {
-	usersDB, err := db.UsersAll(db.QueryAll{})
+	paging := db.PagingInfo{
+		OrderBy: db.UsersOrderByDateCreated,
+		Asc:     false,
+		Limit:   20,
+		Offset:  0,
+	}
+
+	usersDB, totalRecords, err := db.UsersAll(paging)
 	if err != nil {
 		panic(err)
 	}
@@ -33,18 +41,30 @@ func UsersAll(res http.ResponseWriter, req *http.Request) {
 	for _, userDB := range usersDB {
 		user := User{
 			ID:          userDB.ID,
+			Name:        userDB.Name,
 			Email:       userDB.Email,
 			IsAdmin:     userDB.IsAdmin,
+			IsService:   userDB.IsService,
 			DateCreated: userDB.DateCreated,
 		}
 
 		users = append(users, user)
 	}
 
-	data, err := json.MarshalIndent(users, "", "    ")
+	model := struct {
+		Message      string `json:"message"`
+		TotalRecords int    `json:"totalRecords"`
+		Users        []User `json:"users"`
+	}{}
+
+	data, err := json.MarshalIndent(model, "", "    ")
 	if err != nil {
 		panic(err)
 	}
+
+	model.Message = ok
+	model.TotalRecords = totalRecords
+	model.Users = users
 
 	res.Header().Set("Content-Type", "application/json")
 	res.Write(data)
