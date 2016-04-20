@@ -16,4 +16,4 @@ type EntityMetaData struct {
 
 // ErrEntityNotFound is returned when a database Entity is not found, returned
 // from functions that return a single Entity (e.g. EntityFromID)
-var ErrEntityNotFound = errors.New("db: Entity not found")
+var ErrEntityNotFound = errors.New("sqlboiler: Entity not found")

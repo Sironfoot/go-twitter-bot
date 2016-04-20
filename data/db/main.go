@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"errors"
 	"regexp"
 
 	_ "github.com/lib/pq" // initialise postgresql DB provider
@@ -35,5 +36,9 @@ type PagingInfo struct {
 	OrderBy string
 	Asc     bool
 }
+
+// ErrEntityNotFound is returned when a database Entity is not found, returned
+// from functions that return a single Entity (e.g. EntityFromID)
+var ErrEntityNotFound = errors.New("db: Entity not found")
 
 var isUUID = regexp.MustCompile(`(?i)^[a-f0-9]{8}\-[a-f0-9]{4}\-[a-f0-9]{4}\-[a-f0-9]{4}\-[a-f0-9]{12}$`)

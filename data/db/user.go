@@ -58,7 +58,7 @@ var UserFromID = func(id string) (User, error) {
 	var user User
 
 	if !isUUID.MatchString(id) {
-		return user, sqlboiler.ErrEntityNotFound
+		return user, ErrEntityNotFound
 	}
 
 	err := sqlboiler.EntityGetByID(&user, id, db)
@@ -76,7 +76,7 @@ var UserFromEmail = func(email string) (User, error) {
 	err := db.QueryRow(cmd, email).
 		Scan(&user.ID, &user.Name, &user.Email, &user.HashedPassword, &user.AuthToken, &user.IsAdmin, &user.IsService, &user.DateCreated)
 	if err == sql.ErrNoRows {
-		return user, sqlboiler.ErrEntityNotFound
+		return user, ErrEntityNotFound
 	} else if err != nil {
 		return user, err
 	}

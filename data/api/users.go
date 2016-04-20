@@ -16,6 +16,7 @@ const ok = "OK"
 // User model returned by REST API
 type User struct {
 	ID          string    `json:"id"`
+	Name        string    `json:"name"`
 	Email       string    `json:"email"`
 	IsAdmin     bool      `json:"isAdmin"`
 	DateCreated time.Time `json:"dateCreated"`

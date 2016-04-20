@@ -6,7 +6,6 @@ import (
 
 	"github.com/sironfoot/go-twitter-bot/data/db"
 	"github.com/sironfoot/go-twitter-bot/data/models"
-	"github.com/sironfoot/go-twitter-bot/lib/sqlboiler"
 )
 
 const (
@@ -31,7 +30,7 @@ func userSetUp() {
 			}, nil
 		}
 
-		return db.User{}, sqlboiler.ErrEntityNotFound
+		return db.User{}, db.ErrEntityNotFound
 	}
 }
 

@@ -57,7 +57,7 @@ var TwitterAccountFromID = func(id string) (TwitterAccount, error) {
 	var account TwitterAccount
 
 	if !isUUID.MatchString(id) {
-		return account, sqlboiler.ErrEntityNotFound
+		return account, ErrEntityNotFound
 	}
 
 	err := sqlboiler.EntityGetByID(&account, id, db)
