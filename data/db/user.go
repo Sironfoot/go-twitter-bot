@@ -72,12 +72,11 @@ var UserFromID = func(id string) (User, error) {
 var UserFromEmail = func(email string) (User, error) {
 	var user User
 
-	cmd := `SELECT id, name, email, hashed_password, auth_token, is_admin, is_service, date_created
+	cmd := `SELECT id, ` + sqlboiler.GetColumnListString(&user) + `
 			FROM users
 			WHERE email = $1`
 
-	err := db.QueryRow(cmd, email).
-		Scan(&user.ID, &user.Name, &user.Email, &user.HashedPassword, &user.AuthToken, &user.IsAdmin, &user.IsService, &user.DateCreated)
+	err := dbx.QueryRowx(cmd, email).StructScan(&user)
 	if err == sql.ErrNoRows {
 		return user, ErrEntityNotFound
 	} else if err != nil {
@@ -111,7 +110,7 @@ var UsersAll = func(query PagingInfo) ([]User, int, error) {
 		"ORDER BY $1 " +
 		"LIMIT $2 OFFSET $3"
 
-	rows, err := db.Query(cmd, orderBy, query.Limit, query.Offset)
+	rows, err := dbx.Queryx(cmd, orderBy, query.Limit, query.Offset)
 	if err != nil {
 		return nil, recordCount, err
 	}
@@ -120,7 +119,7 @@ var UsersAll = func(query PagingInfo) ([]User, int, error) {
 
 	for rows.Next() {
 		user := User{}
-		err = rows.Scan(&user.ID, &user.Name, &user.Email, &user.HashedPassword, &user.AuthToken, &user.IsAdmin, &user.IsService, &user.DateCreated)
+		err = rows.StructScan(&user)
 		if err != nil {
 			return nil, recordCount, err
 		}
@@ -128,8 +127,6 @@ var UsersAll = func(query PagingInfo) ([]User, int, error) {
 		users = append(users, user)
 	}
 
-	countCmd := "SELECT COUNT(*) FROM users"
-	err = db.QueryRow(countCmd).Scan(&recordCount)
-
+	err = dbx.Get(&recordCount, "SELECT COUNT(*) FROM users")
 	return users, recordCount, err
 }

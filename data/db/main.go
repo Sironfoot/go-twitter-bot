@@ -5,28 +5,39 @@ import (
 	"errors"
 	"regexp"
 
+	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq" // initialise postgresql DB provider
 )
 
 var db *sql.DB
+var dbx *sqlx.DB
 
 // InitDB initialises the database
-func InitDB(connectionString string) (err error) {
+func InitDB(connectionString string) error {
+	var err error
+
 	db, err = sql.Open("postgres", connectionString)
-	return
+	if err != nil {
+		return err
+	}
+
+	err = db.Ping()
+	if err != nil {
+		return err
+	}
+
+	dbx = sqlx.NewDb(db, "postgres")
+	return nil
 }
 
 // CloseDB closes the database
 func CloseDB() error {
-	return db.Close()
-}
+	err := db.Close()
+	if err != nil {
+		return err
+	}
 
-// QueryAll is a general purpose query struct for returning Entities
-type QueryAll struct {
-	Limit    int
-	OrderBy  string
-	OrderAsc bool
-	After    interface{}
+	return dbx.Close()
 }
 
 // PagingInfo contains information about paging when calling queries that return multiple records

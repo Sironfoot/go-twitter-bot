@@ -16,9 +16,8 @@ type User struct {
 	IsService bool   `json:"isService"`
 }
 
-// TrimFields trims whitespace from start and end of fields
-// that are appropriate for trimming
-func (user *User) TrimFields() {
+// Sanitise sanitises fields for the model, such as trimming whitespace
+func (user *User) Sanitise() {
 	user.Name = strings.TrimSpace(user.Name)
 	user.Email = strings.TrimSpace(user.Email)
 }

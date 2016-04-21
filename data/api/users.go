@@ -10,6 +10,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/sironfoot/go-twitter-bot/data/db"
 	"github.com/sironfoot/go-twitter-bot/data/models"
+	"golang.org/x/crypto/bcrypt"
 )
 
 const ok = "OK"
@@ -151,6 +152,7 @@ func UserCreate(res http.ResponseWriter, req *http.Request) {
 
 	res.Header().Set("Content-Type", "application/json")
 
+	newUser.Sanitise()
 	validationErrors, err := newUser.ValidateCreate()
 	if err != nil {
 		panic(err)
@@ -159,23 +161,46 @@ func UserCreate(res http.ResponseWriter, req *http.Request) {
 	model := struct {
 		Message string                   `json:"message"`
 		Errors  []models.ValidationError `json:"errors"`
+		ID      *string                  `json:"id"`
 	}{}
+
+	defer func() {
+		data, jsonErr := json.MarshalIndent(model, "", "   ")
+		if jsonErr != nil {
+			panic(jsonErr)
+		}
+		res.Write(data)
+	}()
 
 	if len(validationErrors) > 0 {
 		model.Message = "User model is invalid."
 		model.Errors = validationErrors
 		res.WriteHeader(http.StatusBadRequest)
-	} else {
-		model.Message = ok
-		res.WriteHeader(http.StatusCreated)
+		return
 	}
 
-	data, err := json.MarshalIndent(model, "", "   ")
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newUser.Password), 12)
 	if err != nil {
 		panic(err)
 	}
 
-	res.Write(data)
+	user := db.User{
+		Name:           newUser.Name,
+		Email:          newUser.Email,
+		HashedPassword: string(hashedPassword),
+		DateCreated:    time.Now().UTC(),
+		IsAdmin:        newUser.IsAdmin,
+		IsService:      newUser.IsService,
+	}
+
+	err = user.Save()
+	if err != nil {
+		panic(err)
+	}
+
+	model.Message = ok
+	model.ID = &user.ID
+	res.WriteHeader(http.StatusCreated)
 }
 
 // UserUpdate = PUT: /users/{userID}
@@ -218,6 +243,7 @@ func UserUpdate(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	updateUser.Sanitise()
 	validationErrors, err := updateUser.ValidateUpdate(userID)
 
 	if len(validationErrors) > 0 {
@@ -231,12 +257,22 @@ func UserUpdate(res http.ResponseWriter, req *http.Request) {
 	user.HashedPassword = updateUser.Password
 	user.IsAdmin = updateUser.IsAdmin
 
+	if updateUser.Password != "" {
+		hashedPassword, bcryptErr := bcrypt.GenerateFromPassword([]byte(updateUser.Password), 12)
+		if bcryptErr != nil {
+			panic(bcryptErr)
+		}
+
+		user.HashedPassword = string(hashedPassword)
+	}
+
 	err = user.Save()
 	if err != nil {
 		panic(err)
 	}
 
 	model.Message = ok
+	res.WriteHeader(http.StatusOK)
 }
 
 // UserDelete = DELETE: /users/{userID}
@@ -253,7 +289,6 @@ func UserDelete(res http.ResponseWriter, req *http.Request) {
 		if jsonErr != nil {
 			panic(jsonErr)
 		}
-
 		res.Write(data)
 	}()
 
