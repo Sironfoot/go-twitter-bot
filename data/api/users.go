@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -25,11 +26,34 @@ type User struct {
 
 // UsersAll = GET: /users
 func UsersAll(res http.ResponseWriter, req *http.Request) {
+	qs := req.URL.Query()
+
+	recordsPerPage, err := strconv.Atoi(qs.Get("recordsPerPage"))
+	if err != nil {
+		recordsPerPage = 20
+	}
+	if recordsPerPage < 1 {
+		recordsPerPage = 1
+	} else if recordsPerPage > 100 {
+		recordsPerPage = 100
+	}
+
+	page, err := strconv.Atoi(qs.Get("page"))
+	if err != nil {
+		page = 1
+	}
+
+	if page < 1 {
+		page = 1
+	} else if page > 100 {
+		page = 100
+	}
+
 	paging := db.PagingInfo{
 		OrderBy: db.UsersOrderByDateCreated,
 		Asc:     false,
-		Limit:   20,
-		Offset:  0,
+		Limit:   page * recordsPerPage,
+		Offset:  (page - 1) * recordsPerPage,
 	}
 
 	usersDB, totalRecords, err := db.UsersAll(paging)
@@ -52,19 +76,23 @@ func UsersAll(res http.ResponseWriter, req *http.Request) {
 	}
 
 	model := struct {
-		Message      string `json:"message"`
-		TotalRecords int    `json:"totalRecords"`
-		Users        []User `json:"users"`
+		Message        string `json:"message"`
+		Page           int    `json:"page"`
+		RecordsPerPage int    `json:"recordPerPage"`
+		TotalRecords   int    `json:"totalRecords"`
+		Users          []User `json:"users"`
 	}{}
+
+	model.Message = ok
+	model.Page = page
+	model.RecordsPerPage = recordsPerPage
+	model.TotalRecords = totalRecords
+	model.Users = users
 
 	data, err := json.MarshalIndent(model, "", "    ")
 	if err != nil {
 		panic(err)
 	}
-
-	model.Message = ok
-	model.TotalRecords = totalRecords
-	model.Users = users
 
 	res.Header().Set("Content-Type", "application/json")
 	res.Write(data)
@@ -77,7 +105,7 @@ func UserGet(res http.ResponseWriter, req *http.Request) {
 
 	model := struct {
 		Message string `json:"message"`
-		User    User   `json:"user"`
+		User    *User  `json:"user"`
 	}{}
 
 	res.Header().Set("Content-Type", "application/json")
@@ -101,10 +129,12 @@ func UserGet(res http.ResponseWriter, req *http.Request) {
 	}
 
 	model.Message = ok
-	model.User = User{
+	model.User = &User{
 		ID:          user.ID,
+		Name:        user.Name,
 		Email:       user.Email,
 		IsAdmin:     user.IsAdmin,
+		IsService:   user.IsService,
 		DateCreated: user.DateCreated,
 	}
 }
