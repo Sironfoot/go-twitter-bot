@@ -62,6 +62,9 @@ var UserFromID = func(id string) (User, error) {
 	}
 
 	err := sqlboiler.EntityGetByID(&user, id, db)
+	if err == sqlboiler.ErrEntityNotFound {
+		return user, ErrEntityNotFound
+	}
 	return user, err
 }
 
