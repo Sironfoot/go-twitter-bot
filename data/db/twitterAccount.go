@@ -75,8 +75,9 @@ const (
 )
 
 // TwitterAccountsAll returns all TwitterAccount records from the database
-var TwitterAccountsAll = func(paging PagingInfo) ([]TwitterAccount, error) {
+var TwitterAccountsAll = func(paging PagingInfo) ([]TwitterAccount, int, error) {
 	var accounts []TwitterAccount
+	recordCount := 0
 
 	cmd := `SELECT id, ` + sqlboiler.GetColumnListString(&TwitterAccount{}) + `
 			FROM twitter_accounts
@@ -85,23 +86,24 @@ var TwitterAccountsAll = func(paging PagingInfo) ([]TwitterAccount, error) {
 
 	rows, err := dbx.Queryx(cmd, paging.BuildOrderBy(), paging.Limit, paging.Offset)
 	if err != nil {
-		return nil, err
+		return nil, recordCount, err
 	}
 
 	defer rows.Close()
 
 	for rows.Next() {
 		account := TwitterAccount{}
-		err := rows.StructScan(&account)
+		err = rows.StructScan(&account)
 
 		if err != nil {
-			return nil, err
+			return nil, recordCount, err
 		}
 
 		accounts = append(accounts, account)
 	}
 
-	return accounts, nil
+	err = dbx.Get(&recordCount, "SELECT COUNT(*) FROM twitter_accounts")
+	return accounts, recordCount, err
 }
 
 // TwitterAccountGetTweets loads Tweets child entites for TwitterAccount

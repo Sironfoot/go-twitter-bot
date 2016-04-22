@@ -65,12 +65,12 @@ func TwitterAccountsAll(res http.ResponseWriter, req *http.Request) {
 		Offset:  (page - 1) * recordsPerPage,
 	}
 
-	twitterAccounts, err := db.TwitterAccountsAll(paging)
+	twitterAccounts, totalRecords, err := db.TwitterAccountsAll(paging)
 	if err != nil {
 		panic(err)
 	}
 
-	accounts := make([]TwitterAccount, len(twitterAccounts))
+	var accounts []TwitterAccount
 
 	for _, twitterAccount := range twitterAccounts {
 		account := TwitterAccount{
@@ -84,30 +84,27 @@ func TwitterAccountsAll(res http.ResponseWriter, req *http.Request) {
 			AccessTokenSecret: twitterAccount.AccessTokenSecret,
 		}
 
-		tweets, tweetErr := twitterAccount.GetTweets()
-		if tweetErr != nil {
-			panic(tweetErr)
-		}
-
-		for _, tweet := range tweets {
-			account.Tweets = append(account.Tweets, Tweet{
-				ID:       tweet.ID,
-				Text:     tweet.Tweet,
-				PostOn:   tweet.PostOn,
-				IsPosted: tweet.IsPosted,
-			})
-		}
-
 		accounts = append(accounts, account)
 	}
 
 	model := struct {
 		Message         string           `json:"message"`
+		Page            int              `json:"page"`
+		RecordsPerPage  int              `json:"recordPerPage"`
+		TotalRecords    int              `json:"totalRecords"`
 		TwitterAccounts []TwitterAccount `json:"twitterAccounts"`
 	}{}
 
 	model.Message = ok
-	model.TwitterAccounts = accounts
+	model.Page = page
+	model.RecordsPerPage = recordsPerPage
+	model.TotalRecords = totalRecords
+
+	if len(accounts) == 0 {
+		model.TwitterAccounts = make([]TwitterAccount, 0)
+	} else {
+		model.TwitterAccounts = accounts
+	}
 
 	data, err := json.MarshalIndent(model, "", "    ")
 	if err != nil {
@@ -125,7 +122,7 @@ func TwitterAccountGet(res http.ResponseWriter, req *http.Request) {
 
 	model := struct {
 		Message        string         `json:"message"`
-		TwitterAccount TwitterAccount `json:"TwitterAccount"`
+		TwitterAccount TwitterAccount `json:"twitterAccount"`
 	}{}
 
 	res.Header().Set("Content-Type", "application/json")
