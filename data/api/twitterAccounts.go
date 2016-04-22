@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -34,12 +35,42 @@ type Tweet struct {
 
 // TwitterAccountsAll = GET: /twitterAccounts
 func TwitterAccountsAll(res http.ResponseWriter, req *http.Request) {
-	twitterAccounts, err := db.TwitterAccountsAll()
+	qs := req.URL.Query()
+
+	recordsPerPage, err := strconv.Atoi(qs.Get("recordsPerPage"))
+	if err != nil {
+		recordsPerPage = 20
+	}
+	if recordsPerPage < 1 {
+		recordsPerPage = 1
+	} else if recordsPerPage > 100 {
+		recordsPerPage = 100
+	}
+
+	page, err := strconv.Atoi(qs.Get("page"))
+	if err != nil {
+		page = 1
+	}
+
+	if page < 1 {
+		page = 1
+	} else if page > 100 {
+		page = 100
+	}
+
+	paging := db.PagingInfo{
+		OrderBy: db.UsersOrderByDateCreated,
+		Asc:     false,
+		Limit:   page * recordsPerPage,
+		Offset:  (page - 1) * recordsPerPage,
+	}
+
+	twitterAccounts, err := db.TwitterAccountsAll(paging)
 	if err != nil {
 		panic(err)
 	}
 
-	var accounts []TwitterAccount
+	accounts := make([]TwitterAccount, len(twitterAccounts))
 
 	for _, twitterAccount := range twitterAccounts {
 		account := TwitterAccount{
@@ -70,7 +101,15 @@ func TwitterAccountsAll(res http.ResponseWriter, req *http.Request) {
 		accounts = append(accounts, account)
 	}
 
-	data, err := json.MarshalIndent(accounts, "", "    ")
+	model := struct {
+		Message         string           `json:"message"`
+		TwitterAccounts []TwitterAccount `json:"twitterAccounts"`
+	}{}
+
+	model.Message = ok
+	model.TwitterAccounts = accounts
+
+	data, err := json.MarshalIndent(model, "", "    ")
 	if err != nil {
 		panic(err)
 	}

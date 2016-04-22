@@ -15,7 +15,7 @@ type TwitterAccount struct {
 	ConsumerKey       string    `db:"consumer_key"`
 	ConsumerSecret    string    `db:"consumer_secret"`
 	AccessToken       string    `db:"access_token"`
-	AccessTokenSecret string    `db:"accessTokenSecret"`
+	AccessTokenSecret string    `db:"access_token_secret"`
 }
 
 // IsTransient determines if TwitterAccount record has been saved to the database,
