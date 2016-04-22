@@ -8,14 +8,14 @@ import (
 
 // TwitterAccount maps to twitter_accounts table
 type TwitterAccount struct {
-	ID                string
-	UserID            string
-	Username          string
-	DateCreated       time.Time
-	ConsumerKey       string
-	ConsumerSecret    string
-	AccessToken       string
-	AccessTokenSecret string
+	ID                string    `db:"id"`
+	UserID            string    `db:"user_id"`
+	Username          string    `db:"username"`
+	DateCreated       time.Time `db:"date_created"`
+	ConsumerKey       string    `db:"consumer_key"`
+	ConsumerSecret    string    `db:"consumer_secret"`
+	AccessToken       string    `db:"access_token"`
+	AccessTokenSecret string    `db:"accessTokenSecret"`
 }
 
 // IsTransient determines if TwitterAccount record has been saved to the database,
@@ -67,22 +67,23 @@ var TwitterAccountFromID = func(id string) (TwitterAccount, error) {
 	return account, err
 }
 
+const (
+	// TwitterAccountsOrderByUsername is for ordering TwitterAccounts by Username
+	TwitterAccountsOrderByUsername = "username"
+	// TwitterAccountsOrderByDateCreated is for ordering TwitterAccounts by DateCreated
+	TwitterAccountsOrderByDateCreated = "date_created"
+)
+
 // TwitterAccountsAll returns all TwitterAccount records from the database
-var TwitterAccountsAll = func() ([]TwitterAccount, error) {
+var TwitterAccountsAll = func(paging PagingInfo) ([]TwitterAccount, error) {
 	var accounts []TwitterAccount
 
-	cmd := `SELECT
-				id,
-				user_id,
-				username,
-				date_created,
-				consumer_key,
-				consumer_secret,
-				access_token,
-				access_token_secret
-			FROM twitter_accounts`
+	cmd := `SELECT id, ` + sqlboiler.GetColumnListString(&TwitterAccount{}) + `
+			FROM twitter_accounts
+			ORDER BY $1
+			LIMIT $2 OFFSET $3`
 
-	rows, err := db.Query(cmd)
+	rows, err := dbx.Queryx(cmd, paging.BuildOrderBy(), paging.Limit, paging.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -91,15 +92,7 @@ var TwitterAccountsAll = func() ([]TwitterAccount, error) {
 
 	for rows.Next() {
 		account := TwitterAccount{}
-		err = rows.Scan(
-			&account.ID,
-			&account.UserID,
-			&account.Username,
-			&account.DateCreated,
-			&account.ConsumerKey,
-			&account.ConsumerSecret,
-			&account.AccessToken,
-			&account.AccessTokenSecret)
+		err := rows.StructScan(&account)
 
 		if err != nil {
 			return nil, err
@@ -126,7 +119,7 @@ var TwitterAccountGetTweets = func(account *TwitterAccount) ([]Tweet, error) {
 		}
 
 		for rows.Next() {
-			tweet := Tweet{Account: account}
+			tweet := Tweet{AccountID: account.ID}
 			err = rows.Scan(
 				&tweet.ID,
 				&tweet.Tweet,

@@ -1,7 +1,6 @@
 package db
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/sironfoot/go-twitter-bot/lib/sqlboiler"
@@ -9,12 +8,12 @@ import (
 
 // Tweet maps to tweets table
 type Tweet struct {
-	ID          string
-	Account     *TwitterAccount
-	Tweet       string
-	PostOn      time.Time
-	IsPosted    bool
-	DateCreated time.Time
+	ID          string    `db:"id"`
+	AccountID   string    `db:"twitter_account_id"`
+	Tweet       string    `db:"tweet"`
+	PostOn      time.Time `db:"post_on"`
+	IsPosted    bool      `db:"is_posted"`
+	DateCreated time.Time `db:"date_created"`
 }
 
 // IsTransient determines if Tweet record has been saved to the database,
@@ -33,39 +32,7 @@ func (tweet *Tweet) MetaData() sqlboiler.EntityMetaData {
 
 // TweetSave saves the Tweet struct to the database.
 var TweetSave = func(tweet *Tweet) error {
-	if tweet.IsTransient() {
-		if tweet.Account == nil {
-			return fmt.Errorf("Parent TwitterAccount entity (Account field) must be set")
-		}
-
-		cmd := `INSERT INTO tweets(twitter_acount_id, tweet, post_on, is_posted, date_created)
-		        VALUES($1, $2, $3, $4, $5)
-                RETURNING id`
-
-		statement, err := db.Prepare(cmd)
-		if err != nil {
-			return err
-		}
-		defer statement.Close()
-
-		err = statement.
-			QueryRow(tweet.Account.ID, tweet.Tweet, tweet.PostOn, tweet.IsPosted, tweet.DateCreated).
-			Scan(&tweet.ID)
-		if err != nil {
-			return err
-		}
-	} else {
-		cmd := `UPDATE tweets
-		        SET tweet = $2, post_on = $3, is_posted = $4, date_created = $5
-			    WHERE id = $1`
-
-		_, err := db.Exec(cmd, tweet.ID, tweet.Tweet, tweet.PostOn, tweet.IsPosted, tweet.DateCreated)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return sqlboiler.EntitySave(tweet, db)
 }
 
 // Save saves the Tweet struct to the database.

@@ -98,19 +98,12 @@ var UsersAll = func(query PagingInfo) ([]User, int, error) {
 	var users []User
 	recordCount := 0
 
-	orderBy := query.OrderBy
-	if query.Asc {
-		orderBy += " ASC"
-	} else {
-		orderBy += " DESC"
-	}
-
 	cmd := "SELECT id, " + sqlboiler.GetColumnListString(&User{}) + " " +
 		"FROM users " +
 		"ORDER BY $1 " +
 		"LIMIT $2 OFFSET $3"
 
-	rows, err := dbx.Queryx(cmd, orderBy, query.Limit, query.Offset)
+	rows, err := dbx.Queryx(cmd, query.BuildOrderBy(), query.Limit, query.Offset)
 	if err != nil {
 		return nil, recordCount, err
 	}

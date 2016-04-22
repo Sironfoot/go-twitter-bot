@@ -48,6 +48,19 @@ type PagingInfo struct {
 	Asc     bool
 }
 
+// BuildOrderBy builds an ORDER BY sql string based on the
+// OrderBy and Asc properties of the PagingInfo struct
+func (paging PagingInfo) BuildOrderBy() string {
+	orderBy := paging.OrderBy
+	if paging.Asc {
+		orderBy += " ASC"
+	} else {
+		orderBy += " DESC"
+	}
+
+	return orderBy
+}
+
 // ErrEntityNotFound is returned when a database Entity is not found, returned
 // from functions that return a single Entity (e.g. EntityFromID)
 var ErrEntityNotFound = errors.New("db: Entity not found")
