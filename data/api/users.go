@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -12,8 +11,6 @@ import (
 	"github.com/sironfoot/go-twitter-bot/data/models"
 	"golang.org/x/crypto/bcrypt"
 )
-
-const ok = "OK"
 
 // User model returned by REST API
 type User struct {
@@ -27,35 +24,28 @@ type User struct {
 
 // UsersAll = GET: /users
 func UsersAll(res http.ResponseWriter, req *http.Request) {
-	qs := req.URL.Query()
+	var response interface{}
 
-	recordsPerPage, err := strconv.Atoi(qs.Get("recordsPerPage"))
-	if err != nil {
-		recordsPerPage = 20
-	}
-	if recordsPerPage < 1 {
-		recordsPerPage = 1
-	} else if recordsPerPage > 100 {
-		recordsPerPage = 100
-	}
+	defer func() {
+		res.Header().Set("Content-Type", "application/json")
 
-	page, err := strconv.Atoi(qs.Get("page"))
-	if err != nil {
-		page = 1
-	}
+		data, jsonErr := json.MarshalIndent(response, "", "    ")
+		if jsonErr != nil {
+			panic(jsonErr)
+		}
+		res.Write(data)
+	}()
 
-	if page < 1 {
-		page = 1
-	} else if page > 100 {
-		page = 100
+	paging, errResponse := extractAndValidatePagingInfo(req)
+	if errResponse != nil {
+		response = errResponse
+		return
 	}
 
-	paging := db.PagingInfo{
-		OrderBy: db.UsersOrderByDateCreated,
-		Asc:     false,
-		Limit:   page * recordsPerPage,
-		Offset:  (page - 1) * recordsPerPage,
-	}
+	model := struct {
+		pagedResponse
+		Users []User `json:"users"`
+	}{}
 
 	usersDB, totalRecords, err := db.UsersAll(paging)
 	if err != nil {
@@ -76,27 +66,13 @@ func UsersAll(res http.ResponseWriter, req *http.Request) {
 		users = append(users, user)
 	}
 
-	model := struct {
-		Message        string `json:"message"`
-		Page           int    `json:"page"`
-		RecordsPerPage int    `json:"recordPerPage"`
-		TotalRecords   int    `json:"totalRecords"`
-		Users          []User `json:"users"`
-	}{}
-
 	model.Message = ok
-	model.Page = page
-	model.RecordsPerPage = recordsPerPage
+	model.Page = paging.Page
+	model.RecordsPerPage = paging.RecordsPerPage
 	model.TotalRecords = totalRecords
 	model.Users = users
 
-	data, err := json.MarshalIndent(model, "", "    ")
-	if err != nil {
-		panic(err)
-	}
-
-	res.Header().Set("Content-Type", "application/json")
-	res.Write(data)
+	response = model
 }
 
 // UserGet = GET: /users/[userID]
@@ -105,8 +81,8 @@ func UserGet(res http.ResponseWriter, req *http.Request) {
 	userID := vars["userID"]
 
 	model := struct {
-		Message string `json:"message"`
-		User    *User  `json:"user"`
+		messageResponse
+		User *User `json:"user"`
 	}{}
 
 	res.Header().Set("Content-Type", "application/json")
@@ -158,14 +134,10 @@ func UserCreate(res http.ResponseWriter, req *http.Request) {
 		panic(err)
 	}
 
-	model := struct {
-		Message string                   `json:"message"`
-		Errors  []models.ValidationError `json:"errors"`
-		ID      *string                  `json:"id"`
-	}{}
+	response := createResponse{}
 
 	defer func() {
-		data, jsonErr := json.MarshalIndent(model, "", "   ")
+		data, jsonErr := json.MarshalIndent(response, "", "   ")
 		if jsonErr != nil {
 			panic(jsonErr)
 		}
@@ -173,8 +145,8 @@ func UserCreate(res http.ResponseWriter, req *http.Request) {
 	}()
 
 	if len(validationErrors) > 0 {
-		model.Message = "User model is invalid."
-		model.Errors = validationErrors
+		response.Message = "User model is invalid."
+		response.Errors = validationErrors
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -198,8 +170,8 @@ func UserCreate(res http.ResponseWriter, req *http.Request) {
 		panic(err)
 	}
 
-	model.Message = ok
-	model.ID = &user.ID
+	response.Message = ok
+	response.ID = &user.ID
 	res.WriteHeader(http.StatusCreated)
 }
 
@@ -218,13 +190,10 @@ func UserUpdate(res http.ResponseWriter, req *http.Request) {
 
 	res.Header().Set("Content-Type", "application/json")
 
-	model := struct {
-		Message string                   `json:"message"`
-		Errors  []models.ValidationError `json:"errors"`
-	}{}
+	response := updateResponse{}
 
 	defer func() {
-		data, jsonErr := json.MarshalIndent(model, "", "   ")
+		data, jsonErr := json.MarshalIndent(response, "", "   ")
 		if jsonErr != nil {
 			panic(jsonErr)
 		}
@@ -238,7 +207,7 @@ func UserUpdate(res http.ResponseWriter, req *http.Request) {
 	}
 
 	if err == db.ErrEntityNotFound {
-		model.Message = fmt.Sprintf("User not found on ID: %s", userID)
+		response.Message = fmt.Sprintf("User not found on ID: %s", userID)
 		res.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -247,8 +216,8 @@ func UserUpdate(res http.ResponseWriter, req *http.Request) {
 	validationErrors, err := updateUser.ValidateUpdate(userID)
 
 	if len(validationErrors) > 0 {
-		model.Message = "User model is invalid."
-		model.Errors = validationErrors
+		response.Message = "User model is invalid."
+		response.Errors = validationErrors
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -271,7 +240,7 @@ func UserUpdate(res http.ResponseWriter, req *http.Request) {
 		panic(err)
 	}
 
-	model.Message = ok
+	response.Message = ok
 	res.WriteHeader(http.StatusOK)
 }
 
@@ -280,12 +249,10 @@ func UserDelete(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	userID := vars["userID"]
 
-	model := struct {
-		Message string `json:"message"`
-	}{}
+	response := messageResponse{}
 
 	defer func() {
-		data, jsonErr := json.MarshalIndent(model, "", "   ")
+		data, jsonErr := json.MarshalIndent(response, "", "   ")
 		if jsonErr != nil {
 			panic(jsonErr)
 		}
@@ -298,7 +265,7 @@ func UserDelete(res http.ResponseWriter, req *http.Request) {
 	}
 
 	if err == db.ErrEntityNotFound {
-		model.Message = fmt.Sprintf("User not found on ID: %s", userID)
+		response.Message = fmt.Sprintf("User not found on ID: %s", userID)
 		res.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -308,5 +275,5 @@ func UserDelete(res http.ResponseWriter, req *http.Request) {
 		panic(err)
 	}
 
-	model.Message = ok
+	response.Message = ok
 }

@@ -103,7 +103,7 @@ var UsersAll = func(query PagingInfo) ([]User, int, error) {
 		"ORDER BY $1 " +
 		"LIMIT $2 OFFSET $3"
 
-	rows, err := dbx.Queryx(cmd, query.BuildOrderBy(), query.Limit, query.Offset)
+	rows, err := dbx.Queryx(cmd, query.BuildOrderBy(), query.Limit(), query.Offset())
 	if err != nil {
 		return nil, recordCount, err
 	}

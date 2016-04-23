@@ -42,10 +42,22 @@ func CloseDB() error {
 
 // PagingInfo contains information about paging when calling queries that return multiple records
 type PagingInfo struct {
-	Limit   int
-	Offset  int
-	OrderBy string
-	Asc     bool
+	Page           int
+	RecordsPerPage int
+	OrderBy        string
+	Asc            bool
+}
+
+// Limit converts 'Page' and 'RecordsPerPage' into a
+// limit value that can be used in database queries
+func (paging PagingInfo) Limit() int {
+	return paging.Page * paging.RecordsPerPage
+}
+
+// Offset converts 'Page' and 'RecordsPerPage' into an
+// offset value that can be used in database queries
+func (paging PagingInfo) Offset() int {
+	return (paging.Page - 1) * paging.RecordsPerPage
 }
 
 // BuildOrderBy builds an ORDER BY sql string based on the

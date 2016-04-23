@@ -84,7 +84,7 @@ var TwitterAccountsAll = func(paging PagingInfo) ([]TwitterAccount, int, error) 
 			ORDER BY $1
 			LIMIT $2 OFFSET $3`
 
-	rows, err := dbx.Queryx(cmd, paging.BuildOrderBy(), paging.Limit, paging.Offset)
+	rows, err := dbx.Queryx(cmd, paging.BuildOrderBy(), paging.Limit(), paging.Offset())
 	if err != nil {
 		return nil, recordCount, err
 	}
