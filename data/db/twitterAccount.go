@@ -53,14 +53,21 @@ func (account *TwitterAccount) Delete() error {
 }
 
 // TwitterAccountFromID returns a TwitterAccount record with given ID
-var TwitterAccountFromID = func(id string) (TwitterAccount, error) {
-	var account TwitterAccount
+var TwitterAccountFromID = func(id string) (TwitterAccountList, error) {
+	var account TwitterAccountList
 
 	if !isUUID.MatchString(id) {
 		return account, ErrEntityNotFound
 	}
 
-	err := sqlboiler.EntityGetByID(&account, id, db)
+	cmd := `SELECT ta.id, ` + sqlboiler.GetColumnListString(&TwitterAccount{}, "ta") + `, COUNT(t.id) AS num_tweets
+			FROM twitter_accounts ta
+				LEFT OUTER JOIN tweets t ON ta.id = t.twitter_account_id
+			WHERE ta.id = $1
+			GROUP BY ta.id`
+
+	err := dbx.QueryRowx(cmd, id).StructScan(&account)
+	//err := sqlboiler.EntityGetByID(&account, id, db)
 	if err == sqlboiler.ErrEntityNotFound {
 		return account, ErrEntityNotFound
 	}
@@ -74,17 +81,62 @@ const (
 	TwitterAccountsOrderByDateCreated = "date_created"
 )
 
+// TwitterAccountList is a TwitterAccount struct that includes a NumTweets field
+type TwitterAccountList struct {
+	TwitterAccount
+	NumTweets int `db:"num_tweets"`
+}
+
+// TwitterAccountQuery is a search query for searching TwitterAccounts, used by db.TwitterAccountsAll
+type TwitterAccountQuery struct {
+	PagingInfo
+	ContainsUsername         string
+	HasTweetsToBePostedSince time.Time
+}
+
 // TwitterAccountsAll returns all TwitterAccount records from the database
-var TwitterAccountsAll = func(paging PagingInfo) ([]TwitterAccount, int, error) {
-	var accounts []TwitterAccount
+var TwitterAccountsAll = func(query TwitterAccountQuery) ([]TwitterAccountList, int, error) {
+	var accounts []TwitterAccountList
 	recordCount := 0
 
-	cmd := `SELECT id, ` + sqlboiler.GetColumnListString(&TwitterAccount{}) + `
-			FROM twitter_accounts
-			ORDER BY $1
-			LIMIT $2 OFFSET $3`
+	var queryParams []interface{}
+	queryParams = append(queryParams, query.BuildOrderBy())
+	queryParams = append(queryParams, query.Limit())
+	queryParams = append(queryParams, query.Offset())
 
-	rows, err := dbx.Queryx(cmd, paging.BuildOrderBy(), paging.Limit(), paging.Offset())
+	cmd := `SELECT ta.id, ` + sqlboiler.GetColumnListString(&TwitterAccount{}, "ta") + `, COUNT(t.id) AS num_tweets
+		FROM twitter_accounts ta
+		LEFT OUTER JOIN tweets t ON ta.id = t.twitter_account_id`
+
+	where := ""
+	var whereParams []interface{}
+
+	if query.ContainsUsername != "" && !query.HasTweetsToBePostedSince.IsZero() {
+		where += ` WHERE ta.username LIKE $4
+				     AND t.is_posted = false
+					 AND t.post_on > $5`
+
+		whereParams = append(whereParams, "%"+query.ContainsUsername+"%")
+		whereParams = append(whereParams, query.HasTweetsToBePostedSince)
+	} else if query.ContainsUsername != "" {
+		where += ` WHERE ta.username LIKE $4`
+
+		whereParams = append(whereParams, "%"+query.ContainsUsername+"%")
+	} else if !query.HasTweetsToBePostedSince.IsZero() {
+		where += ` WHERE t.is_posted = false
+				     AND t.post_on > $4`
+
+		whereParams = append(whereParams, query.HasTweetsToBePostedSince)
+	}
+
+	cmd += where
+	queryParams = append(queryParams, whereParams...)
+
+	cmd += ` GROUP BY ta.id
+		ORDER BY $1
+		LIMIT $2 OFFSET $3`
+
+	rows, err := dbx.Queryx(cmd, queryParams...)
 	if err != nil {
 		return nil, recordCount, err
 	}
@@ -92,7 +144,7 @@ var TwitterAccountsAll = func(paging PagingInfo) ([]TwitterAccount, int, error) 
 	defer rows.Close()
 
 	for rows.Next() {
-		account := TwitterAccount{}
+		account := TwitterAccountList{}
 		err = rows.StructScan(&account)
 
 		if err != nil {
@@ -102,7 +154,27 @@ var TwitterAccountsAll = func(paging PagingInfo) ([]TwitterAccount, int, error) 
 		accounts = append(accounts, account)
 	}
 
-	err = dbx.Get(&recordCount, "SELECT COUNT(*) FROM twitter_accounts")
+	if query.ContainsUsername == "" && query.HasTweetsToBePostedSince.IsZero() {
+		err = dbx.Get(&recordCount, "SELECT COUNT(*) FROM twitter_accounts")
+	} else {
+		countCmd := `SELECT COUNT(DISTINCT ta.id)
+					 FROM twitter_accounts ta
+					 LEFT OUTER JOIN tweets t ON ta.id = t.twitter_account_id`
+
+		if query.ContainsUsername != "" && !query.HasTweetsToBePostedSince.IsZero() {
+			countCmd += ` WHERE ta.username LIKE $1
+					   		AND t.is_posted = false
+			 	   	   		AND t.post_on > $2`
+		} else if query.ContainsUsername != "" {
+			countCmd += ` WHERE ta.username LIKE $1`
+		} else if !query.HasTweetsToBePostedSince.IsZero() {
+			countCmd += ` WHERE t.is_posted = false
+			 				AND t.post_on > $1`
+		}
+
+		err = dbx.Get(&recordCount, countCmd, whereParams...)
+	}
+
 	return accounts, recordCount, err
 }
 

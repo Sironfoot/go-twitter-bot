@@ -9,8 +9,8 @@ import (
 )
 
 // GetColumnList returns a slice of all the column names for a DB
-// Entity struct (as specified by thier tags), except the PK ID
-func GetColumnList(entity Entity) []string {
+// Entity struct (as specified by their tags), except the PK ID
+func GetColumnList(entity Entity, alias string) []string {
 	metaData := entity.MetaData()
 
 	var columnList []string
@@ -24,6 +24,10 @@ func GetColumnList(entity Entity) []string {
 		columnName := strings.TrimSpace(tag.Get("db"))
 
 		if columnName != "" && columnName != metaData.PrimaryKeyName {
+			if alias != "" {
+				columnName = alias + "." + columnName
+			}
+
 			columnList = append(columnList, columnName)
 		}
 	}
@@ -33,15 +37,15 @@ func GetColumnList(entity Entity) []string {
 
 // GetColumnListString returns a comma separated string of all the column
 // names for a DB Entity struct (as specified by thier tags), except the PK ID
-func GetColumnListString(entity Entity) string {
-	return strings.Join(GetColumnList(entity), ", ")
+func GetColumnListString(entity Entity, alias string) string {
+	return strings.Join(GetColumnList(entity, alias), ", ")
 }
 
 // GenerateInsertStatement generates an SQL command for inserting a record into the database
 func GenerateInsertStatement(entity Entity) string {
 	metaData := entity.MetaData()
 
-	columns := GetColumnList(entity)
+	columns := GetColumnList(entity, "")
 
 	cmd := "INSERT INTO " + metaData.TableName + "(" + strings.Join(columns, ", ") + ") " +
 		"VALUES("
@@ -60,7 +64,7 @@ func GenerateUpdateStatement(entity Entity) string {
 
 	cmd := "UPDATE " + metaData.TableName + " SET "
 
-	columns := GetColumnList(entity)
+	columns := GetColumnList(entity, "")
 	for i, columnName := range columns {
 		cmd += fmt.Sprintf("%s = $%d, ", columnName, i+2)
 	}
@@ -79,7 +83,7 @@ func GenerateDeleteByIDStatement(entity Entity) string {
 func GenerateGetByIDStatement(entity Entity) string {
 	metaData := entity.MetaData()
 
-	return "SELECT " + GetColumnListString(entity) + " " +
+	return "SELECT " + GetColumnListString(entity, "") + " " +
 		"FROM " + metaData.TableName + " " +
 		"WHERE " + metaData.PrimaryKeyName + " = $1"
 }

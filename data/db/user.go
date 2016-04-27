@@ -72,7 +72,7 @@ var UserFromID = func(id string) (User, error) {
 var UserFromEmail = func(email string) (User, error) {
 	var user User
 
-	cmd := `SELECT id, ` + sqlboiler.GetColumnListString(&user) + `
+	cmd := `SELECT id, ` + sqlboiler.GetColumnListString(&user, "") + `
 			FROM users
 			WHERE email = $1`
 
@@ -98,7 +98,7 @@ var UsersAll = func(query PagingInfo) ([]User, int, error) {
 	var users []User
 	recordCount := 0
 
-	cmd := "SELECT id, " + sqlboiler.GetColumnListString(&User{}) + " " +
+	cmd := "SELECT id, " + sqlboiler.GetColumnListString(&User{}, "") + " " +
 		"FROM users " +
 		"ORDER BY $1 " +
 		"LIMIT $2 OFFSET $3"

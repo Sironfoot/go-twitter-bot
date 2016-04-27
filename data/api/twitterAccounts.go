@@ -20,8 +20,21 @@ type TwitterAccount struct {
 	ConsumerSecret    string    `json:"consumerSecret"`
 	AccessToken       string    `json:"accessToken"`
 	AccessTokenSecret string    `json:"accessTokenSecret"`
+	NumTweets         int       `json:"numTweets"`
+}
 
-	Tweets []Tweet `json:"tweets"`
+// TwitterAccountWithTweets model returned by GetByID API
+type TwitterAccountWithTweets struct {
+	TwitterAccount
+	Tweets ChildTweets `json:"tweets"`
+}
+
+// ChildTweets ...
+type ChildTweets struct {
+	Page           int     `json:"page"`
+	RecordsPerPage int     `json:"recordPerPage"`
+	TotalRecords   int     `json:"totalRecords"`
+	Records        []Tweet `json:"records"`
 }
 
 // Tweet model returned by REST API
@@ -52,7 +65,18 @@ func TwitterAccountsAll(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	twitterAccounts, totalRecords, err := db.TwitterAccountsAll(paging)
+	query := db.TwitterAccountQuery{
+		PagingInfo: paging,
+	}
+
+	qs := req.URL.Query()
+	query.ContainsUsername = qs.Get("username")
+	dateTime, err := time.Parse("2006-01-02 15:04:05", qs.Get("hasTweetsToBePostedSince"))
+	if err == nil {
+		query.HasTweetsToBePostedSince = dateTime
+	}
+
+	twitterAccounts, totalRecords, err := db.TwitterAccountsAll(query)
 	if err != nil {
 		panic(err)
 	}
@@ -69,6 +93,7 @@ func TwitterAccountsAll(res http.ResponseWriter, req *http.Request) {
 			ConsumerSecret:    twitterAccount.ConsumerSecret,
 			AccessToken:       twitterAccount.AccessToken,
 			AccessTokenSecret: twitterAccount.AccessTokenSecret,
+			NumTweets:         twitterAccount.NumTweets,
 		}
 
 		accounts = append(accounts, account)
@@ -100,7 +125,7 @@ func TwitterAccountGet(res http.ResponseWriter, req *http.Request) {
 
 	model := struct {
 		messageResponse
-		TwitterAccount TwitterAccount `json:"twitterAccount"`
+		TwitterAccount TwitterAccountWithTweets `json:"twitterAccount"`
 	}{}
 
 	res.Header().Set("Content-Type", "application/json")
@@ -124,15 +149,18 @@ func TwitterAccountGet(res http.ResponseWriter, req *http.Request) {
 	}
 
 	model.Message = "OK"
-	model.TwitterAccount = TwitterAccount{
-		ID:                account.ID,
-		UserID:            account.UserID,
-		Username:          account.Username,
-		DateCreated:       account.DateCreated,
-		ConsumerKey:       account.ConsumerKey,
-		ConsumerSecret:    account.ConsumerSecret,
-		AccessToken:       account.AccessToken,
-		AccessTokenSecret: account.AccessTokenSecret,
+	model.TwitterAccount = TwitterAccountWithTweets{
+		TwitterAccount: TwitterAccount{
+			ID:                account.ID,
+			UserID:            account.UserID,
+			Username:          account.Username,
+			DateCreated:       account.DateCreated,
+			ConsumerKey:       account.ConsumerKey,
+			ConsumerSecret:    account.ConsumerSecret,
+			AccessToken:       account.AccessToken,
+			AccessTokenSecret: account.AccessTokenSecret,
+			NumTweets:         account.NumTweets,
+		},
 	}
 
 	tweets, err := account.GetTweets()
@@ -140,8 +168,14 @@ func TwitterAccountGet(res http.ResponseWriter, req *http.Request) {
 		panic(err)
 	}
 
+	model.TwitterAccount.Tweets = ChildTweets{
+		Page:           1,
+		TotalRecords:   2,
+		RecordsPerPage: 20,
+	}
+
 	for _, tweet := range tweets {
-		model.TwitterAccount.Tweets = append(model.TwitterAccount.Tweets, Tweet{
+		model.TwitterAccount.Tweets.Records = append(model.TwitterAccount.Tweets.Records, Tweet{
 			ID:       tweet.ID,
 			Text:     tweet.Tweet,
 			PostOn:   tweet.PostOn,

@@ -21,7 +21,16 @@ func TestGenerateColumnList(t *testing.T) {
 	user := userEntity{}
 
 	expected := strings.Join(columnNames, ", ")
-	actual := sqlboiler.GetColumnListString(&user)
+	actual := sqlboiler.GetColumnListString(&user, "")
+
+	if expected != actual {
+		t.Errorf("actual column list was:\n\n%s\n\nbut expected:\n\n%s", actual, expected)
+	}
+
+	// with alias
+	alias := "x"
+	expected = alias + "." + strings.Join(columnNames, ", "+alias+".")
+	actual = sqlboiler.GetColumnListString(&user, alias)
 
 	if expected != actual {
 		t.Errorf("actual column list was:\n\n%s\n\nbut expected:\n\n%s", actual, expected)
