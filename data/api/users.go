@@ -36,7 +36,7 @@ func UsersAll(res http.ResponseWriter, req *http.Request) {
 		res.Write(data)
 	}()
 
-	paging, errResponse := extractAndValidatePagingInfo(req)
+	paging, errResponse := extractAndValidatePagingInfo(req, db.UsersOrderByDateCreated)
 	if errResponse != nil {
 		response = errResponse
 		return

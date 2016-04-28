@@ -178,43 +178,79 @@ var TwitterAccountsAll = func(query TwitterAccountQuery) ([]TwitterAccountList, 
 	return accounts, recordCount, err
 }
 
+const (
+	// TweetsOrderByDateCreated is for ordering Tweets by DateCreated
+	TweetsOrderByDateCreated = "date_created"
+)
+
+// TweetsQuery is a search query for searching Tweets, used by db.TwitterAccountGetTweets
+type TweetsQuery struct {
+	PagingInfo
+	ToBePostedSince time.Time
+}
+
 // TwitterAccountGetTweets loads Tweets child entites for TwitterAccount
-var TwitterAccountGetTweets = func(account *TwitterAccount) ([]Tweet, error) {
+var TwitterAccountGetTweets = func(account *TwitterAccount, query TweetsQuery) ([]Tweet, int, error) {
 	var tweets []Tweet
+	totalRecords := 0
 
-	if !account.IsTransient() {
-		cmd := `SELECT id, tweet, post_on, is_posted, date_created
-				FROM tweets
-				WHERE twitter_account_id = $1`
-
-		rows, err := db.Query(cmd, account.ID)
-		if err != nil {
-			return tweets, err
-		}
-
-		for rows.Next() {
-			tweet := Tweet{AccountID: account.ID}
-			err = rows.Scan(
-				&tweet.ID,
-				&tweet.Tweet,
-				&tweet.PostOn,
-				&tweet.IsPosted,
-				&tweet.DateCreated)
-
-			if err != nil {
-				return tweets, err
-			}
-
-			tweets = append(tweets, tweet)
-		}
-
-		rows.Close()
+	if account.IsTransient() {
+		return tweets, totalRecords, nil
 	}
 
-	return tweets, nil
+	var queryParams []interface{}
+	queryParams = append(queryParams, account.ID)
+	queryParams = append(queryParams, query.BuildOrderBy())
+	queryParams = append(queryParams, query.Limit())
+	queryParams = append(queryParams, query.Offset())
+
+	cmd := `SELECT id, ` + sqlboiler.GetColumnListString(&Tweet{}, "") + `
+			FROM tweets
+			WHERE twitter_account_id = $1 `
+
+	if !query.ToBePostedSince.IsZero() {
+		cmd += `AND is_posted = false AND post_on > $5 `
+		queryParams = append(queryParams, query.ToBePostedSince)
+	}
+
+	cmd += `ORDER BY $2
+			LIMIT $3 OFFSET $4`
+
+	rows, err := dbx.Queryx(cmd, queryParams...)
+	if err != nil {
+		return tweets, totalRecords, err
+	}
+
+	for rows.Next() {
+		tweet := Tweet{}
+		err = rows.StructScan(&tweet)
+
+		if err != nil {
+			return tweets, totalRecords, err
+		}
+
+		tweets = append(tweets, tweet)
+	}
+
+	rows.Close()
+
+	// count tweets
+	var countParams []interface{}
+	countCmd := `SELECT COUNT(*) FROM tweets WHERE twitter_account_id = $1`
+
+	countParams = append(countParams, account.ID)
+
+	if !query.ToBePostedSince.IsZero() {
+		countCmd += ` AND is_posted = false AND post_on > $2`
+		countParams = append(countParams, query.ToBePostedSince)
+	}
+
+	err = dbx.Get(&totalRecords, countCmd, countParams...)
+
+	return tweets, totalRecords, err
 }
 
 // GetTweets loads Tweets child entites for TwitterAccount
-func (account *TwitterAccount) GetTweets() ([]Tweet, error) {
-	return TwitterAccountGetTweets(account)
+func (account *TwitterAccount) GetTweets(query TweetsQuery) ([]Tweet, int, error) {
+	return TwitterAccountGetTweets(account, query)
 }

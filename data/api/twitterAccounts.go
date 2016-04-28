@@ -10,8 +10,7 @@ import (
 	"github.com/sironfoot/go-twitter-bot/data/db"
 )
 
-// TwitterAccount model returned by REST API
-type TwitterAccount struct {
+type twitterAccountBase struct {
 	ID                string    `json:"id"`
 	UserID            string    `json:"userId"`
 	Username          string    `json:"username"`
@@ -20,25 +19,26 @@ type TwitterAccount struct {
 	ConsumerSecret    string    `json:"consumerSecret"`
 	AccessToken       string    `json:"accessToken"`
 	AccessTokenSecret string    `json:"accessTokenSecret"`
-	NumTweets         int       `json:"numTweets"`
 }
 
-// TwitterAccountWithTweets model returned by GetByID API
-type TwitterAccountWithTweets struct {
-	TwitterAccount
-	Tweets ChildTweets `json:"tweets"`
+type twitterAccount struct {
+	twitterAccountBase
+	Tweets int `json:"tweets"`
 }
 
-// ChildTweets ...
-type ChildTweets struct {
+type twitterAccountWithTweets struct {
+	twitterAccountBase
+	Tweets childTweets `json:"tweets"`
+}
+
+type childTweets struct {
 	Page           int     `json:"page"`
 	RecordsPerPage int     `json:"recordPerPage"`
 	TotalRecords   int     `json:"totalRecords"`
-	Records        []Tweet `json:"records"`
+	Records        []tweet `json:"records"`
 }
 
-// Tweet model returned by REST API
-type Tweet struct {
+type tweet struct {
 	ID       string    `json:"id"`
 	Text     string    `json:"text"`
 	PostOn   time.Time `json:"postOn"`
@@ -59,7 +59,7 @@ func TwitterAccountsAll(res http.ResponseWriter, req *http.Request) {
 		res.Write(data)
 	}()
 
-	paging, errResponse := extractAndValidatePagingInfo(req)
+	paging, errResponse := extractAndValidatePagingInfo(req, db.TwitterAccountsOrderByDateCreated)
 	if errResponse != nil {
 		response = errResponse
 		return
@@ -81,19 +81,21 @@ func TwitterAccountsAll(res http.ResponseWriter, req *http.Request) {
 		panic(err)
 	}
 
-	var accounts []TwitterAccount
+	var accounts []twitterAccount
 
-	for _, twitterAccount := range twitterAccounts {
-		account := TwitterAccount{
-			ID:                twitterAccount.ID,
-			UserID:            twitterAccount.UserID,
-			Username:          twitterAccount.Username,
-			DateCreated:       twitterAccount.DateCreated,
-			ConsumerKey:       twitterAccount.ConsumerKey,
-			ConsumerSecret:    twitterAccount.ConsumerSecret,
-			AccessToken:       twitterAccount.AccessToken,
-			AccessTokenSecret: twitterAccount.AccessTokenSecret,
-			NumTweets:         twitterAccount.NumTweets,
+	for _, accountDB := range twitterAccounts {
+		account := twitterAccount{
+			twitterAccountBase: twitterAccountBase{
+				ID:                accountDB.ID,
+				UserID:            accountDB.UserID,
+				Username:          accountDB.Username,
+				DateCreated:       accountDB.DateCreated,
+				ConsumerKey:       accountDB.ConsumerKey,
+				ConsumerSecret:    accountDB.ConsumerSecret,
+				AccessToken:       accountDB.AccessToken,
+				AccessTokenSecret: accountDB.AccessTokenSecret,
+			},
+			Tweets: accountDB.NumTweets,
 		}
 
 		accounts = append(accounts, account)
@@ -101,7 +103,7 @@ func TwitterAccountsAll(res http.ResponseWriter, req *http.Request) {
 
 	model := struct {
 		pagedResponse
-		TwitterAccounts []TwitterAccount `json:"twitterAccounts"`
+		TwitterAccounts []twitterAccount `json:"twitterAccounts"`
 	}{}
 
 	model.Message = ok
@@ -110,7 +112,7 @@ func TwitterAccountsAll(res http.ResponseWriter, req *http.Request) {
 	model.TotalRecords = totalRecords
 
 	if len(accounts) == 0 {
-		model.TwitterAccounts = make([]TwitterAccount, 0)
+		model.TwitterAccounts = make([]twitterAccount, 0)
 	} else {
 		model.TwitterAccounts = accounts
 	}
@@ -120,37 +122,40 @@ func TwitterAccountsAll(res http.ResponseWriter, req *http.Request) {
 
 // TwitterAccountGet = GET: /twitterAccount/{twitterAccountID}
 func TwitterAccountGet(res http.ResponseWriter, req *http.Request) {
-	vars := mux.Vars(req)
-	twitterAccountID := vars["twitterAccountID"]
-
-	model := struct {
-		messageResponse
-		TwitterAccount TwitterAccountWithTweets `json:"twitterAccount"`
-	}{}
-
-	res.Header().Set("Content-Type", "application/json")
+	var response interface{}
 
 	defer func() {
-		data, err := json.MarshalIndent(model, "", "    ")
-		if err != nil {
-			panic(err)
-		}
+		res.Header().Set("Content-Type", "application/json")
 
+		data, jsonErr := json.MarshalIndent(response, "", "    ")
+		if jsonErr != nil {
+			panic(jsonErr)
+		}
 		res.Write(data)
 	}()
 
+	vars := mux.Vars(req)
+	twitterAccountID := vars["twitterAccountID"]
+
 	account, err := db.TwitterAccountFromID(twitterAccountID)
 	if err == db.ErrEntityNotFound {
-		model.Message = fmt.Sprintf("TwitterAccount not found on ID: %s", twitterAccountID)
 		res.WriteHeader(http.StatusNotFound)
+		response = messageResponse{
+			Message: fmt.Sprintf("TwitterAccount not found on ID: %s", twitterAccountID),
+		}
 		return
 	} else if err != nil {
 		panic(err)
 	}
 
+	model := struct {
+		messageResponse
+		TwitterAccount twitterAccount `json:"twitterAccount"`
+	}{}
+
 	model.Message = "OK"
-	model.TwitterAccount = TwitterAccountWithTweets{
-		TwitterAccount: TwitterAccount{
+	model.TwitterAccount = twitterAccount{
+		twitterAccountBase: twitterAccountBase{
 			ID:                account.ID,
 			UserID:            account.UserID,
 			Username:          account.Username,
@@ -159,27 +164,100 @@ func TwitterAccountGet(res http.ResponseWriter, req *http.Request) {
 			ConsumerSecret:    account.ConsumerSecret,
 			AccessToken:       account.AccessToken,
 			AccessTokenSecret: account.AccessTokenSecret,
-			NumTweets:         account.NumTweets,
+		},
+		Tweets: account.NumTweets,
+	}
+
+	response = model
+}
+
+// TwitterAccountGetWithTweets = GET: /twitterAccounts/{twitterAccountID}/tweets
+func TwitterAccountGetWithTweets(res http.ResponseWriter, req *http.Request) {
+	var response interface{}
+
+	defer func() {
+		res.Header().Set("Content-Type", "application/json")
+
+		data, jsonErr := json.MarshalIndent(response, "", "    ")
+		if jsonErr != nil {
+			panic(jsonErr)
+		}
+		res.Write(data)
+	}()
+
+	vars := mux.Vars(req)
+	twitterAccountID := vars["twitterAccountID"]
+
+	account, err := db.TwitterAccountFromID(twitterAccountID)
+	if err == db.ErrEntityNotFound {
+		res.WriteHeader(http.StatusNotFound)
+		response = messageResponse{
+			Message: fmt.Sprintf("TwitterAccount not found on ID: %s", twitterAccountID),
+		}
+		return
+	} else if err != nil {
+		panic(err)
+	}
+
+	model := struct {
+		messageResponse
+		TwitterAccount twitterAccountWithTweets `json:"twitterAccount"`
+	}{}
+
+	model.Message = "OK"
+	model.TwitterAccount = twitterAccountWithTweets{
+		twitterAccountBase: twitterAccountBase{
+			ID:                account.ID,
+			UserID:            account.UserID,
+			Username:          account.Username,
+			DateCreated:       account.DateCreated,
+			ConsumerKey:       account.ConsumerKey,
+			ConsumerSecret:    account.ConsumerSecret,
+			AccessToken:       account.AccessToken,
+			AccessTokenSecret: account.AccessTokenSecret,
+		},
+		Tweets: childTweets{
+			Page:           1,
+			TotalRecords:   0,
+			RecordsPerPage: 20,
 		},
 	}
 
-	tweets, err := account.GetTweets()
+	paging, errResponse := extractAndValidatePagingInfo(req, db.TweetsOrderByDateCreated)
+	if errResponse != nil {
+		response = errResponse
+		return
+	}
+
+	query := db.TweetsQuery{
+		PagingInfo: paging,
+	}
+
+	qs := req.URL.Query()
+	dateTime, err := time.Parse("2006-01-02 15:04:05", qs.Get("tweetsToBePostedSince"))
+	if err == nil {
+		query.ToBePostedSince = dateTime
+	}
+
+	tweets, totalTweets, err := account.GetTweets(query)
 	if err != nil {
 		panic(err)
 	}
 
-	model.TwitterAccount.Tweets = ChildTweets{
-		Page:           1,
-		TotalRecords:   2,
-		RecordsPerPage: 20,
+	model.TwitterAccount.Tweets.TotalRecords = totalTweets
+
+	if len(tweets) > 0 {
+		for _, tweetDB := range tweets {
+			model.TwitterAccount.Tweets.Records = append(model.TwitterAccount.Tweets.Records, tweet{
+				ID:       tweetDB.ID,
+				Text:     tweetDB.Tweet,
+				PostOn:   tweetDB.PostOn,
+				IsPosted: tweetDB.IsPosted,
+			})
+		}
+	} else {
+		model.TwitterAccount.Tweets.Records = make([]tweet, 0)
 	}
 
-	for _, tweet := range tweets {
-		model.TwitterAccount.Tweets.Records = append(model.TwitterAccount.Tweets.Records, Tweet{
-			ID:       tweet.ID,
-			Text:     tweet.Tweet,
-			PostOn:   tweet.PostOn,
-			IsPosted: tweet.IsPosted,
-		})
-	}
+	response = model
 }

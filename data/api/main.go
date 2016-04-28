@@ -32,7 +32,7 @@ type updateResponse struct {
 	Errors []models.ValidationError `json:"errors"`
 }
 
-func extractAndValidatePagingInfo(req *http.Request) (paging db.PagingInfo, errResponse *messageResponse) {
+func extractAndValidatePagingInfo(req *http.Request, defaultOrderBy string) (paging db.PagingInfo, errResponse *messageResponse) {
 	qs := req.URL.Query()
 
 	recordsPerPage, err := strconv.Atoi(qs.Get("recordsPerPage"))
@@ -60,7 +60,7 @@ func extractAndValidatePagingInfo(req *http.Request) (paging db.PagingInfo, errR
 	}
 
 	paging = db.PagingInfo{
-		OrderBy:        db.UsersOrderByDateCreated,
+		OrderBy:        defaultOrderBy,
 		Asc:            false,
 		Page:           page,
 		RecordsPerPage: recordsPerPage,

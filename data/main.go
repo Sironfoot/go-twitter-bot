@@ -42,6 +42,8 @@ func main() {
 		Methods("GET")
 	router.HandleFunc("/twitterAccounts/{twitterAccountID}", api.TwitterAccountGet).
 		Methods("GET")
+	router.HandleFunc("/twitterAccounts/{twitterAccountID}/tweets", api.TwitterAccountGetWithTweets).
+		Methods("GET")
 
 	server := http.Server{
 		Addr:    *addr,
