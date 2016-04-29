@@ -12,8 +12,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// User model returned by REST API
-type User struct {
+type user struct {
 	ID          string    `json:"id"`
 	Name        string    `json:"name"`
 	Email       string    `json:"email"`
@@ -44,7 +43,7 @@ func UsersAll(res http.ResponseWriter, req *http.Request) {
 
 	model := struct {
 		pagedResponse
-		Users []User `json:"users"`
+		Users []user `json:"users"`
 	}{}
 
 	usersDB, totalRecords, err := db.UsersAll(paging)
@@ -52,9 +51,9 @@ func UsersAll(res http.ResponseWriter, req *http.Request) {
 		panic(err)
 	}
 
-	var users []User
+	var users []user
 	for _, userDB := range usersDB {
-		user := User{
+		user := user{
 			ID:          userDB.ID,
 			Name:        userDB.Name,
 			Email:       userDB.Email,
@@ -77,47 +76,63 @@ func UsersAll(res http.ResponseWriter, req *http.Request) {
 
 // UserGet = GET: /users/[userID]
 func UserGet(res http.ResponseWriter, req *http.Request) {
-	vars := mux.Vars(req)
-	userID := vars["userID"]
-
-	model := struct {
-		messageResponse
-		User *User `json:"user"`
-	}{}
-
-	res.Header().Set("Content-Type", "application/json")
+	var response interface{}
 
 	defer func() {
-		data, err := json.MarshalIndent(model, "", "   ")
-		if err != nil {
-			panic(err)
-		}
+		res.Header().Set("Content-Type", "application/json")
 
+		data, jsonErr := json.MarshalIndent(response, "", "    ")
+		if jsonErr != nil {
+			panic(jsonErr)
+		}
 		res.Write(data)
 	}()
 
-	user, err := db.UserFromID(userID)
+	vars := mux.Vars(req)
+	userID := vars["userID"]
+
+	userDB, err := db.UserFromID(userID)
 	if err == db.ErrEntityNotFound {
-		model.Message = fmt.Sprintf("User not found on ID: %s", userID)
-		res.WriteHeader(http.StatusNotFound)
+		response = messageResponse{
+			Message: fmt.Sprintf("User not found on ID: %s", userID),
+		}
 		return
 	} else if err != nil {
 		panic(err)
 	}
 
+	model := struct {
+		messageResponse
+		User user `json:"user"`
+	}{}
+
 	model.Message = ok
-	model.User = &User{
-		ID:          user.ID,
-		Name:        user.Name,
-		Email:       user.Email,
-		IsAdmin:     user.IsAdmin,
-		IsService:   user.IsService,
-		DateCreated: user.DateCreated,
+	model.User = user{
+		ID:          userDB.ID,
+		Name:        userDB.Name,
+		Email:       userDB.Email,
+		IsAdmin:     userDB.IsAdmin,
+		IsService:   userDB.IsService,
+		DateCreated: userDB.DateCreated,
 	}
+
+	response = model
 }
 
 // UserCreate = POST: /users
 func UserCreate(res http.ResponseWriter, req *http.Request) {
+	var response interface{}
+
+	defer func() {
+		res.Header().Set("Content-Type", "application/json")
+
+		data, jsonErr := json.MarshalIndent(response, "", "    ")
+		if jsonErr != nil {
+			panic(jsonErr)
+		}
+		res.Write(data)
+	}()
+
 	var newUser models.User
 
 	err := json.NewDecoder(req.Body).Decode(&newUser)
@@ -126,27 +141,17 @@ func UserCreate(res http.ResponseWriter, req *http.Request) {
 	}
 	req.Body.Close()
 
-	res.Header().Set("Content-Type", "application/json")
-
 	newUser.Sanitise()
 	validationErrors, err := newUser.ValidateCreate()
 	if err != nil {
 		panic(err)
 	}
 
-	response := createResponse{}
-
-	defer func() {
-		data, jsonErr := json.MarshalIndent(response, "", "   ")
-		if jsonErr != nil {
-			panic(jsonErr)
-		}
-		res.Write(data)
-	}()
+	model := createResponse{}
 
 	if len(validationErrors) > 0 {
-		response.Message = "User model is invalid."
-		response.Errors = validationErrors
+		model.Message = "User model is invalid."
+		model.Errors = validationErrors
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -170,13 +175,27 @@ func UserCreate(res http.ResponseWriter, req *http.Request) {
 		panic(err)
 	}
 
-	response.Message = ok
-	response.ID = &user.ID
+	model.Message = ok
+	model.ID = &user.ID
 	res.WriteHeader(http.StatusCreated)
+
+	response = model
 }
 
 // UserUpdate = PUT: /users/{userID}
 func UserUpdate(res http.ResponseWriter, req *http.Request) {
+	var response interface{}
+
+	defer func() {
+		res.Header().Set("Content-Type", "application/json")
+
+		data, jsonErr := json.MarshalIndent(response, "", "    ")
+		if jsonErr != nil {
+			panic(jsonErr)
+		}
+		res.Write(data)
+	}()
+
 	var updateUser models.User
 
 	err := json.NewDecoder(req.Body).Decode(&updateUser)
@@ -188,26 +207,15 @@ func UserUpdate(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	userID := vars["userID"]
 
-	res.Header().Set("Content-Type", "application/json")
-
-	response := updateResponse{}
-
-	defer func() {
-		data, jsonErr := json.MarshalIndent(response, "", "   ")
-		if jsonErr != nil {
-			panic(jsonErr)
-		}
-
-		res.Write(data)
-	}()
-
 	user, err := db.UserFromID(userID)
 	if err != nil && err != db.ErrEntityNotFound {
 		panic(err)
 	}
 
 	if err == db.ErrEntityNotFound {
-		response.Message = fmt.Sprintf("User not found on ID: %s", userID)
+		response = messageResponse{
+			Message: fmt.Sprintf("User not found on ID: %s", userID),
+		}
 		res.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -216,8 +224,10 @@ func UserUpdate(res http.ResponseWriter, req *http.Request) {
 	validationErrors, err := updateUser.ValidateUpdate(userID)
 
 	if len(validationErrors) > 0 {
-		response.Message = "User model is invalid."
-		response.Errors = validationErrors
+		response = updateResponse{
+			Message: "User model is invalid.",
+			Errors:  validationErrors,
+		}
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -240,24 +250,28 @@ func UserUpdate(res http.ResponseWriter, req *http.Request) {
 		panic(err)
 	}
 
-	response.Message = ok
+	response = messageResponse{
+		Message: ok,
+	}
 	res.WriteHeader(http.StatusOK)
 }
 
 // UserDelete = DELETE: /users/{userID}
 func UserDelete(res http.ResponseWriter, req *http.Request) {
-	vars := mux.Vars(req)
-	userID := vars["userID"]
-
-	response := messageResponse{}
+	var response interface{}
 
 	defer func() {
-		data, jsonErr := json.MarshalIndent(response, "", "   ")
+		res.Header().Set("Content-Type", "application/json")
+
+		data, jsonErr := json.MarshalIndent(response, "", "    ")
 		if jsonErr != nil {
 			panic(jsonErr)
 		}
 		res.Write(data)
 	}()
+
+	vars := mux.Vars(req)
+	userID := vars["userID"]
 
 	user, err := db.UserFromID(userID)
 	if err != nil && err != db.ErrEntityNotFound {
@@ -265,7 +279,9 @@ func UserDelete(res http.ResponseWriter, req *http.Request) {
 	}
 
 	if err == db.ErrEntityNotFound {
-		response.Message = fmt.Sprintf("User not found on ID: %s", userID)
+		response = messageResponse{
+			Message: fmt.Sprintf("User not found on ID: %s", userID),
+		}
 		res.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -275,5 +291,7 @@ func UserDelete(res http.ResponseWriter, req *http.Request) {
 		panic(err)
 	}
 
-	response.Message = ok
+	response = messageResponse{
+		Message: ok,
+	}
 }

@@ -15,21 +15,21 @@ type messageResponse struct {
 }
 
 type pagedResponse struct {
-	messageResponse
-	Page           int `json:"page"`
-	RecordsPerPage int `json:"recordPerPage"`
-	TotalRecords   int `json:"totalRecords"`
+	Message        string `json:"message"`
+	Page           int    `json:"page"`
+	RecordsPerPage int    `json:"recordPerPage"`
+	TotalRecords   int    `json:"totalRecords"`
 }
 
 type createResponse struct {
-	messageResponse
-	Errors []models.ValidationError `json:"errors"`
-	ID     *string                  `json:"id"`
+	Message string                   `json:"message"`
+	Errors  []models.ValidationError `json:"errors"`
+	ID      *string                  `json:"id"`
 }
 
 type updateResponse struct {
-	messageResponse
-	Errors []models.ValidationError `json:"errors"`
+	Message string                   `json:"message"`
+	Errors  []models.ValidationError `json:"errors"`
 }
 
 func extractAndValidatePagingInfo(req *http.Request, defaultOrderBy string) (paging db.PagingInfo, errResponse *messageResponse) {
