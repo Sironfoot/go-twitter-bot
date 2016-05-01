@@ -81,6 +81,12 @@ const (
 	TwitterAccountsOrderByDateCreated = "date_created"
 )
 
+// TwitterAccountsSortableColumns is a list of allowed sortable columns
+var TwitterAccountsSortableColumns = []string{
+	TwitterAccountsOrderByUsername,
+	TwitterAccountsOrderByDateCreated,
+}
+
 // TwitterAccountList is a TwitterAccount struct that includes a NumTweets field
 type TwitterAccountList struct {
 	TwitterAccount
@@ -182,6 +188,11 @@ const (
 	// TweetsOrderByDateCreated is for ordering Tweets by DateCreated
 	TweetsOrderByDateCreated = "date_created"
 )
+
+// TweetsSortableColumns is a list of allowed sortable columns
+var TweetsSortableColumns = []string{
+	TweetsOrderByDateCreated,
+}
 
 // TweetsQuery is a search query for searching Tweets, used by db.TwitterAccountGetTweets
 type TweetsQuery struct {

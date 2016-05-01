@@ -93,6 +93,12 @@ const (
 	UsersOrderByEmail = "email"
 )
 
+// UsersSortableColumns is a list of allowed sortable columns
+var UsersSortableColumns = []string{
+	UsersOrderByDateCreated,
+	UsersOrderByEmail,
+}
+
 // UsersAll returns all User records from the database
 var UsersAll = func(query PagingInfo) ([]User, int, error) {
 	var users []User

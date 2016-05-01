@@ -35,9 +35,10 @@ func UsersAll(res http.ResponseWriter, req *http.Request) {
 		res.Write(data)
 	}()
 
-	paging, errResponse := extractAndValidatePagingInfo(req, db.UsersOrderByDateCreated)
-	if errResponse != nil {
-		response = errResponse
+	defaults := getPagingDefaults(db.UsersOrderByDateCreated, false, db.UsersSortableColumns)
+	paging, err := ExtractAndValidatePagingInfo(req, defaults)
+	if err != nil {
+		response = messageResponse{err.Error()}
 		return
 	}
 
@@ -53,16 +54,14 @@ func UsersAll(res http.ResponseWriter, req *http.Request) {
 
 	var users []user
 	for _, userDB := range usersDB {
-		user := user{
+		users = append(users, user{
 			ID:          userDB.ID,
 			Name:        userDB.Name,
 			Email:       userDB.Email,
 			IsAdmin:     userDB.IsAdmin,
 			IsService:   userDB.IsService,
 			DateCreated: userDB.DateCreated,
-		}
-
-		users = append(users, user)
+		})
 	}
 
 	model.Message = ok

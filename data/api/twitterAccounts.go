@@ -59,9 +59,10 @@ func TwitterAccountsAll(res http.ResponseWriter, req *http.Request) {
 		res.Write(data)
 	}()
 
-	paging, errResponse := extractAndValidatePagingInfo(req, db.TwitterAccountsOrderByDateCreated)
-	if errResponse != nil {
-		response = errResponse
+	defaults := getPagingDefaults(db.TwitterAccountsOrderByDateCreated, false, db.TwitterAccountsSortableColumns)
+	paging, err := ExtractAndValidatePagingInfo(req, defaults)
+	if err != nil {
+		response = messageResponse{err.Error()}
 		return
 	}
 
@@ -223,9 +224,10 @@ func TwitterAccountGetWithTweets(res http.ResponseWriter, req *http.Request) {
 		},
 	}
 
-	paging, errResponse := extractAndValidatePagingInfo(req, db.TweetsOrderByDateCreated)
-	if errResponse != nil {
-		response = errResponse
+	defaults := getPagingDefaults(db.TweetsOrderByDateCreated, false, db.TweetsSortableColumns)
+	paging, err := ExtractAndValidatePagingInfo(req, defaults)
+	if err != nil {
+		response = messageResponse{err.Error()}
 		return
 	}
 
