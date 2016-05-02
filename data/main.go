@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -27,22 +28,22 @@ func main() {
 		fmt.Fprintf(res, "Hello from GoBot Data server\n")
 	})
 
-	router.HandleFunc("/users", api.UsersAll).
+	router.HandleFunc("/users", wrapJSON(api.UsersAll)).
 		Methods("GET")
-	router.HandleFunc("/users/{userID}", api.UserGet).
+	router.HandleFunc("/users/{userID}", wrapJSON(api.UserGet)).
 		Methods("GET")
-	router.HandleFunc("/users", api.UserCreate).
+	router.HandleFunc("/users", wrapJSON(api.UserCreate)).
 		Methods("POST")
-	router.HandleFunc("/users/{userID}", api.UserUpdate).
+	router.HandleFunc("/users/{userID}", wrapJSON(api.UserUpdate)).
 		Methods("PUT")
-	router.HandleFunc("/users/{userID}", api.UserDelete).
+	router.HandleFunc("/users/{userID}", wrapJSON(api.UserDelete)).
 		Methods("DELETE")
 
-	router.HandleFunc("/twitterAccounts", api.TwitterAccountsAll).
+	router.HandleFunc("/twitterAccounts", wrapJSON(api.TwitterAccountsAll)).
 		Methods("GET")
-	router.HandleFunc("/twitterAccounts/{twitterAccountID}", api.TwitterAccountGet).
+	router.HandleFunc("/twitterAccounts/{twitterAccountID}", wrapJSON(api.TwitterAccountGet)).
 		Methods("GET")
-	router.HandleFunc("/twitterAccounts/{twitterAccountID}/tweets", api.TwitterAccountGetWithTweets).
+	router.HandleFunc("/twitterAccounts/{twitterAccountID}/tweets", wrapJSON(api.TwitterAccountGetWithTweets)).
 		Methods("GET")
 
 	server := http.Server{
@@ -52,4 +53,20 @@ func main() {
 
 	log.Printf("GoBot Data Server running on %s...\n", *addr)
 	server.ListenAndServe()
+}
+
+func wrapJSON(apiFunc func(http.ResponseWriter, *http.Request) interface{}) http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+		response := apiFunc(res, req)
+
+		defer func() {
+			res.Header().Set("Content-Type", "application/json")
+
+			data, jsonErr := json.MarshalIndent(response, "", "    ")
+			if jsonErr != nil {
+				panic(jsonErr)
+			}
+			res.Write(data)
+		}()
+	}
 }

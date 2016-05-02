@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -46,24 +45,11 @@ type tweet struct {
 }
 
 // TwitterAccountsAll = GET: /twitterAccounts
-func TwitterAccountsAll(res http.ResponseWriter, req *http.Request) {
-	var response interface{}
-
-	defer func() {
-		res.Header().Set("Content-Type", "application/json")
-
-		data, jsonErr := json.MarshalIndent(response, "", "    ")
-		if jsonErr != nil {
-			panic(jsonErr)
-		}
-		res.Write(data)
-	}()
-
+func TwitterAccountsAll(res http.ResponseWriter, req *http.Request) interface{} {
 	defaults := getPagingDefaults(db.TwitterAccountsOrderByDateCreated, false, db.TwitterAccountsSortableColumns)
 	paging, err := ExtractAndValidatePagingInfo(req, defaults)
 	if err != nil {
-		response = messageResponse{err.Error()}
-		return
+		return messageResponse{err.Error()}
 	}
 
 	query := db.TwitterAccountQuery{
@@ -118,33 +104,20 @@ func TwitterAccountsAll(res http.ResponseWriter, req *http.Request) {
 		model.TwitterAccounts = accounts
 	}
 
-	response = model
+	return model
 }
 
 // TwitterAccountGet = GET: /twitterAccount/{twitterAccountID}
-func TwitterAccountGet(res http.ResponseWriter, req *http.Request) {
-	var response interface{}
-
-	defer func() {
-		res.Header().Set("Content-Type", "application/json")
-
-		data, jsonErr := json.MarshalIndent(response, "", "    ")
-		if jsonErr != nil {
-			panic(jsonErr)
-		}
-		res.Write(data)
-	}()
-
+func TwitterAccountGet(res http.ResponseWriter, req *http.Request) interface{} {
 	vars := mux.Vars(req)
 	twitterAccountID := vars["twitterAccountID"]
 
 	account, err := db.TwitterAccountFromID(twitterAccountID)
 	if err == db.ErrEntityNotFound {
 		res.WriteHeader(http.StatusNotFound)
-		response = messageResponse{
+		return messageResponse{
 			Message: fmt.Sprintf("TwitterAccount not found on ID: %s", twitterAccountID),
 		}
-		return
 	} else if err != nil {
 		panic(err)
 	}
@@ -169,33 +142,20 @@ func TwitterAccountGet(res http.ResponseWriter, req *http.Request) {
 		Tweets: account.NumTweets,
 	}
 
-	response = model
+	return model
 }
 
 // TwitterAccountGetWithTweets = GET: /twitterAccounts/{twitterAccountID}/tweets
-func TwitterAccountGetWithTweets(res http.ResponseWriter, req *http.Request) {
-	var response interface{}
-
-	defer func() {
-		res.Header().Set("Content-Type", "application/json")
-
-		data, jsonErr := json.MarshalIndent(response, "", "    ")
-		if jsonErr != nil {
-			panic(jsonErr)
-		}
-		res.Write(data)
-	}()
-
+func TwitterAccountGetWithTweets(res http.ResponseWriter, req *http.Request) interface{} {
 	vars := mux.Vars(req)
 	twitterAccountID := vars["twitterAccountID"]
 
 	account, err := db.TwitterAccountFromID(twitterAccountID)
 	if err == db.ErrEntityNotFound {
 		res.WriteHeader(http.StatusNotFound)
-		response = messageResponse{
+		return messageResponse{
 			Message: fmt.Sprintf("TwitterAccount not found on ID: %s", twitterAccountID),
 		}
-		return
 	} else if err != nil {
 		panic(err)
 	}
@@ -227,8 +187,7 @@ func TwitterAccountGetWithTweets(res http.ResponseWriter, req *http.Request) {
 	defaults := getPagingDefaults(db.TweetsOrderByDateCreated, false, db.TweetsSortableColumns)
 	paging, err := ExtractAndValidatePagingInfo(req, defaults)
 	if err != nil {
-		response = messageResponse{err.Error()}
-		return
+		return messageResponse{err.Error()}
 	}
 
 	query := db.TweetsQuery{
@@ -261,5 +220,5 @@ func TwitterAccountGetWithTweets(res http.ResponseWriter, req *http.Request) {
 		model.TwitterAccount.Tweets.Records = make([]tweet, 0)
 	}
 
-	response = model
+	return model
 }
