@@ -28,6 +28,7 @@ func main() {
 		fmt.Fprintf(res, "Hello from GoBot Data server\n")
 	})
 
+	// User entity
 	router.HandleFunc("/users", wrapJSON(api.UsersAll)).
 		Methods("GET")
 	router.HandleFunc("/users/{userID}", wrapJSON(api.UserGet)).
@@ -39,12 +40,21 @@ func main() {
 	router.HandleFunc("/users/{userID}", wrapJSON(api.UserDelete)).
 		Methods("DELETE")
 
+	// TwitterAccount entity
 	router.HandleFunc("/twitterAccounts", wrapJSON(api.TwitterAccountsAll)).
 		Methods("GET")
 	router.HandleFunc("/twitterAccounts/{twitterAccountID}", wrapJSON(api.TwitterAccountGet)).
 		Methods("GET")
+
+	// Tweet entity (child of TwitterAccount)
 	router.HandleFunc("/twitterAccounts/{twitterAccountID}/tweets", wrapJSON(api.TwitterAccountGetWithTweets)).
 		Methods("GET")
+	router.HandleFunc("/twitterAccounts/{twitterAccountID}/tweets", wrapJSON(api.TwitterAccountTweetCreate)).
+		Methods("POST")
+	router.HandleFunc("/twitterAccounts/{twitterAccountID}/tweets/{tweetID}", wrapJSON(api.TwitterAccountTweetUpdate)).
+		Methods("PUT")
+	router.HandleFunc("/twitterAccounts/{twitterAccountID}/tweets/{tweetID}", wrapJSON(api.TwitterAccountTweetDelete)).
+		Methods("DELETE")
 
 	server := http.Server{
 		Addr:    *addr,

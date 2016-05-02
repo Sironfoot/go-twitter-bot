@@ -1,6 +1,7 @@
 package db
 
 import (
+	"database/sql"
 	"time"
 
 	"github.com/sironfoot/go-twitter-bot/lib/sqlboiler"
@@ -67,8 +68,7 @@ var TwitterAccountFromID = func(id string) (TwitterAccountList, error) {
 			GROUP BY ta.id`
 
 	err := dbx.QueryRowx(cmd, id).StructScan(&account)
-	//err := sqlboiler.EntityGetByID(&account, id, db)
-	if err == sqlboiler.ErrEntityNotFound {
+	if err == sql.ErrNoRows {
 		return account, ErrEntityNotFound
 	}
 	return account, err
@@ -264,4 +264,24 @@ var TwitterAccountGetTweets = func(account *TwitterAccount, query TweetsQuery) (
 // GetTweets loads Tweets child entites for TwitterAccount
 func (account *TwitterAccount) GetTweets(query TweetsQuery) ([]Tweet, int, error) {
 	return TwitterAccountGetTweets(account, query)
+}
+
+// TwitterAccountGetTweetFromID gets a TwitterAccount's Tweet by its ID
+var TwitterAccountGetTweetFromID = func(account *TwitterAccount, tweetID string) (Tweet, error) {
+	var tweet Tweet
+
+	cmd := `SELECT id, ` + sqlboiler.GetColumnListString(&tweet, "") + `
+			FROM tweets
+			WHERE twitter_account_id = $1 AND id = $2`
+
+	err := dbx.Get(&tweet, cmd, account.ID, tweetID)
+	if err == sql.ErrNoRows {
+		return tweet, ErrEntityNotFound
+	}
+	return tweet, err
+}
+
+// GetTweetFromID gets this TwitterAccount's Tweet by ID
+func (account *TwitterAccount) GetTweetFromID(id string) (Tweet, error) {
+	return TwitterAccountGetTweetFromID(account, id)
 }

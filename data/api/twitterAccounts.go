@@ -1,12 +1,14 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/sironfoot/go-twitter-bot/data/db"
+	"github.com/sironfoot/go-twitter-bot/data/models"
 )
 
 type twitterAccountBase struct {
@@ -221,4 +223,157 @@ func TwitterAccountGetWithTweets(res http.ResponseWriter, req *http.Request) int
 	}
 
 	return model
+}
+
+// TwitterAccountTweetCreate = POST: /twitterAccounts/{twitterAccountID}/tweets
+func TwitterAccountTweetCreate(res http.ResponseWriter, req *http.Request) interface{} {
+	vars := mux.Vars(req)
+	twitterAccountID := vars["twitterAccountID"]
+
+	account, err := db.TwitterAccountFromID(twitterAccountID)
+	if err == db.ErrEntityNotFound {
+		res.WriteHeader(http.StatusNotFound)
+		return messageResponse{
+			Message: fmt.Sprintf("TwitterAccount not found on ID: %s", twitterAccountID),
+		}
+	} else if err != nil {
+		panic(err)
+	}
+
+	var newTweet models.Tweet
+
+	err = json.NewDecoder(req.Body).Decode(&newTweet)
+	if err != nil {
+		panic(err)
+	}
+	req.Body.Close()
+
+	newTweet.Sanitise()
+	validationErrors, err := newTweet.ValidateCreate()
+	if err != nil {
+		panic(err)
+	}
+
+	model := createResponse{}
+
+	if len(validationErrors) > 0 {
+		model.Message = "Tweet model is invalid."
+		model.Errors = validationErrors
+		res.WriteHeader(http.StatusBadRequest)
+		return model
+	}
+
+	tweet := &db.Tweet{
+		AccountID:   account.ID,
+		Tweet:       newTweet.Text,
+		PostOn:      newTweet.PostOn,
+		IsPosted:    newTweet.IsPosted,
+		DateCreated: time.Now().UTC(),
+	}
+
+	err = tweet.Save()
+	if err != nil {
+		panic(err)
+	}
+
+	model.Message = ok
+	model.ID = &tweet.ID
+	res.WriteHeader(http.StatusCreated)
+
+	return model
+}
+
+// TwitterAccountTweetUpdate = PUT: /twitterAccounts/{twitterAccountID}/tweets/{tweetID}
+func TwitterAccountTweetUpdate(res http.ResponseWriter, req *http.Request) interface{} {
+	vars := mux.Vars(req)
+	twitterAccountID := vars["twitterAccountID"]
+
+	account, err := db.TwitterAccountFromID(twitterAccountID)
+	if err == db.ErrEntityNotFound {
+		res.WriteHeader(http.StatusNotFound)
+		return messageResponse{
+			Message: fmt.Sprintf("TwitterAccount not found on ID: %s", twitterAccountID),
+		}
+	} else if err != nil {
+		panic(err)
+	}
+
+	tweetID := vars["tweetID"]
+	tweet, err := account.GetTweetFromID(tweetID)
+	if err == db.ErrEntityNotFound {
+		res.WriteHeader(http.StatusNotFound)
+		return messageResponse{
+			Message: fmt.Sprintf("Tweet not found on ID: %s", tweetID),
+		}
+	} else if err != nil {
+		panic(err)
+	}
+
+	var updateTweet models.Tweet
+
+	err = json.NewDecoder(req.Body).Decode(&updateTweet)
+	if err != nil {
+		panic(err)
+	}
+	req.Body.Close()
+
+	updateTweet.Sanitise()
+	validationErrors, err := updateTweet.ValidateUpdate(tweetID)
+
+	if len(validationErrors) > 0 {
+		res.WriteHeader(http.StatusBadRequest)
+		return updateResponse{
+			Message: "Tweet model is invalid.",
+			Errors:  validationErrors,
+		}
+	}
+
+	tweet.Tweet = updateTweet.Text
+	tweet.PostOn = updateTweet.PostOn
+	tweet.IsPosted = updateTweet.IsPosted
+
+	err = tweet.Save()
+	if err != nil {
+		panic(err)
+	}
+
+	return messageResponse{
+		Message: ok,
+	}
+}
+
+// TwitterAccountTweetDelete = DELETE: /twitterAccounts/{twitterAccountID}/tweets/{tweetID}
+func TwitterAccountTweetDelete(res http.ResponseWriter, req *http.Request) interface{} {
+	vars := mux.Vars(req)
+	twitterAccountID := vars["twitterAccountID"]
+
+	account, err := db.TwitterAccountFromID(twitterAccountID)
+	if err == db.ErrEntityNotFound {
+		res.WriteHeader(http.StatusNotFound)
+		return messageResponse{
+			Message: fmt.Sprintf("TwitterAccount not found on ID: %s", twitterAccountID),
+		}
+	} else if err != nil {
+		panic(err)
+	}
+
+	tweetID := vars["tweetID"]
+	tweet, err := account.GetTweetFromID(tweetID)
+	if err == db.ErrEntityNotFound {
+		res.WriteHeader(http.StatusNotFound)
+		return messageResponse{
+			Message: fmt.Sprintf("Tweet not found on ID: %s", tweetID),
+		}
+	} else if err != nil {
+		panic(err)
+	}
+
+	err = tweet.Delete()
+	if err != nil {
+		panic(err)
+	}
+
+	return messageResponse{
+		Message: ok,
+	}
 }
