@@ -28,6 +28,14 @@ func main() {
 		fmt.Fprintf(res, "Hello from GoBot Data server\n")
 	})
 
+	// Account actions
+	router.HandleFunc("/account/login", wrapJSON(api.AccountLogin)).
+		Methods("POST,PUT")
+	router.HandleFunc("/account/logout", wrapJSON(api.AccountLogout)).
+		Methods("POST,PUT")
+	router.HandleFunc("/account/signup", wrapJSON(api.AccountSignup)).
+		Methods("POST")
+
 	// User entity
 	router.HandleFunc("/users", wrapJSON(api.UsersAll)).
 		Methods("GET")

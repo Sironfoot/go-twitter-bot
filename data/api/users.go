@@ -170,6 +170,9 @@ func UserUpdate(res http.ResponseWriter, req *http.Request) interface{} {
 
 	updateUser.Sanitise()
 	validationErrors, err := updateUser.ValidateUpdate(userID)
+	if err != nil {
+		panic(err)
+	}
 
 	if len(validationErrors) > 0 {
 		res.WriteHeader(http.StatusBadRequest)
@@ -180,7 +183,6 @@ func UserUpdate(res http.ResponseWriter, req *http.Request) interface{} {
 	}
 
 	user.Email = updateUser.Email
-	user.HashedPassword = updateUser.Password
 	user.IsAdmin = updateUser.IsAdmin
 
 	if updateUser.Password != "" {

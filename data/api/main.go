@@ -17,6 +17,9 @@ const (
 	maxRecordsPerPage     = 100
 )
 
+// TODO: put this in config file and exclude from git before deploying
+const encryptionKey = "DONKEY_RHUBARB"
+
 type messageResponse struct {
 	Message string `json:"message"`
 }

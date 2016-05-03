@@ -39,6 +39,10 @@ const (
 	// ValidationTypeNotUnique represents fields that are required
 	// to be unique in the database such as email addresses
 	ValidationTypeNotUnique = "not_unique"
+
+	// ValidationTypeNotFound represents fields where a corresponding
+	// record cannot be found based on the field value provided.
+	ValidationTypeNotFound = "not_found"
 )
 
 var isEmail = regexp.MustCompile(`(?i)^.+@.+\.[a-z]+$`)
