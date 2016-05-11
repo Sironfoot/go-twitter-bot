@@ -1,0 +1,11 @@
+{
+    "database": {
+        "driverName": "postgres",
+        "connectionString": "user=postgres dbname=go_twitter_bot sslmode=disable"
+    },
+
+    "appSettings": {
+        "serverAddress": "localhost:7001",
+        "encryptionKey": "DONKEY_RHUBARB"
+    }
+}

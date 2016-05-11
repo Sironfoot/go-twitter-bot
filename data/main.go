@@ -10,14 +10,40 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/sironfoot/go-twitter-bot/data/api"
 	"github.com/sironfoot/go-twitter-bot/data/db"
+	"github.com/sironfoot/go-twitter-bot/lib/config"
 )
 
-var addr = flag.String("addr", "localhost:7001", "Address to run server on")
+// Config represents a configuration settings for the app
+type Config struct {
+	Database    Database    `json:"database"`
+	AppSettings AppSettings `json:"appSettings"`
+}
+
+// Database represents database configuration settings for the app
+type Database struct {
+	DriverName       string  `json:"driverName"`
+	ConnectionString string  `json:"connectionString"`
+	Thing            *string `json:"thing"`
+}
+
+// AppSettings represents general application settings for the app
+type AppSettings struct {
+	ServerAddress string `json:"serverAddress"`
+	EncryptionKey string `json:"encryptionKey"`
+}
 
 func main() {
+	var configuration Config
+	err := config.Load("config.json", "dev", &configuration)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	addr := flag.String("addr", configuration.AppSettings.ServerAddress, "Address to run server on")
+	dbConn := flag.String("db", configuration.Database.ConnectionString, "Database connection string")
 	flag.Parse()
 
-	err := db.InitDB("user=postgres dbname=go_twitter_bot sslmode=disable")
+	err = db.InitDB(*dbConn)
 	if err != nil {
 		log.Fatal(err)
 	}
