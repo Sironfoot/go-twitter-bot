@@ -8,10 +8,15 @@ import (
 	"strings"
 )
 
+// ErrPrimaryConfigFileNotExist is returned if the primary JSON config file doesn't exist
+var ErrPrimaryConfigFileNotExist = fmt.Errorf("config: primary config file does not exist")
+
 // Load will load a configuration json file into a struct
 func Load(path, mode string, configData interface{}) (err error) {
 	file, err := os.Open(path)
-	if err != nil {
+	if os.IsNotExist(err) {
+		return ErrPrimaryConfigFileNotExist
+	} else if err != nil {
 		return err
 	}
 
@@ -22,13 +27,13 @@ func Load(path, mode string, configData interface{}) (err error) {
 
 	altPath := strings.Replace(path, ".json", "."+mode+".json", 1)
 
-	if _, errStat := os.Stat(altPath); os.IsNotExist(errStat) {
-		return nil
+	altFile, err := os.Open(altPath)
+	if err != nil && !os.IsNotExist(err) {
+		return err
 	}
 
-	altFile, err := os.Open(altPath)
-	if err != nil {
-		return err
+	if os.IsNotExist(err) {
+		return nil
 	}
 
 	altConfigData := map[string]interface{}{}
@@ -87,7 +92,10 @@ func parseMap(aMap map[string]interface{}, configValue reflect.Value) {
 }
 
 func parseSlice(aSlice []interface{}, configValue reflect.Value) {
-	configValue.SetLen(len(aSlice))
+	configValue.SetLen(0)
+	configValue.SetCap(0)
+	newSlice := reflect.MakeSlice(reflect.SliceOf(configValue.Type().Elem()), len(aSlice), len(aSlice))
+	configValue.Set(newSlice)
 
 	for i, value := range aSlice {
 		switch realItem := value.(type) {
