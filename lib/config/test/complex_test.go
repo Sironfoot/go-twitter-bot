@@ -78,23 +78,6 @@ var expectedConfig = complex{
 	},
 }
 
-func TestLoad_NoEnvironment(t *testing.T) {
-	// arrange
-	var actualConfig complex
-
-	// act
-	err := config.Load("complex.json", "dev", &actualConfig)
-
-	// assert
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if !reflect.DeepEqual(expectedConfig, actualConfig) {
-		t.Errorf("expected and actual config are different.\nExpected:\n%v\n\nActual:\n%v", expectedConfig, actualConfig)
-	}
-}
-
 func TestLoad_WithEnvironment(t *testing.T) {
 	// arrange
 	var actualConfig complex
