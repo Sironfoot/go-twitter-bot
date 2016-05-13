@@ -1,3 +1,7 @@
+// Package config provides utilities for loading a JSON configuration file into a struct object
+// graph, with support for providing an alternative environment JSON config file
+// (e.g. "dev", "staging", "uat", "live"), with values replaced using transformations. Inspired by
+// the way Microsoft ASP.NET handles configuration files.
 package config
 
 import (
@@ -11,25 +15,33 @@ import (
 // ErrPrimaryConfigFileNotExist is returned if the primary JSON config file doesn't exist
 var ErrPrimaryConfigFileNotExist = fmt.Errorf("config: primary config file does not exist")
 
+// ErrConfigDataNotPointer is returned when the configData
+// struct to pass config data into is not a pointer
+var ErrConfigDataNotPointer = fmt.Errorf("config: configData argument is not a pointer")
+
 // Load will load a configuration json file into a struct
 func Load(path, environment string, configData interface{}) (err error) {
 	file, err := os.Open(path)
 	if os.IsNotExist(err) {
 		return ErrPrimaryConfigFileNotExist
 	} else if err != nil {
-		return err
+		return fmt.Errorf("config: error opening primary config file: %s", err)
+	}
+
+	if reflect.TypeOf(configData).Kind() != reflect.Ptr {
+		return ErrConfigDataNotPointer
 	}
 
 	err = json.NewDecoder(file).Decode(configData)
 	if err != nil {
-		return err
+		return fmt.Errorf("config: cannot unmarshal config file: %s", err)
 	}
 
 	altPath := strings.Replace(path, ".json", "."+environment+".json", 1)
 
 	altFile, err := os.Open(altPath)
 	if err != nil && !os.IsNotExist(err) {
-		return err
+		return fmt.Errorf("config: error opening environment config file \"%s\": %s", altPath, err)
 	}
 
 	if os.IsNotExist(err) {
@@ -39,7 +51,7 @@ func Load(path, environment string, configData interface{}) (err error) {
 	altConfigData := map[string]interface{}{}
 	err = json.NewDecoder(altFile).Decode(&altConfigData)
 	if err != nil {
-		return err
+		return fmt.Errorf("config: cannot unmarshal environment config file: %s", err)
 	}
 
 	defer func() {
@@ -68,6 +80,9 @@ func parseMap(aMap map[string]interface{}, configValue reflect.Value) {
 		}
 
 		fieldValue := configValue.FieldByName(fieldName)
+		if fieldValue.Kind() == reflect.Invalid {
+			continue
+		}
 
 		switch realValue := value.(type) {
 		case map[string]interface{}:
@@ -104,24 +119,34 @@ func parseSlice(aSlice []interface{}, configValue reflect.Value) {
 	configValue.Set(newSlice)
 
 	for i, value := range aSlice {
+		configItem := configValue.Index(i)
+
 		switch realItem := value.(type) {
 		case map[string]interface{}:
-			parseMap(realItem, configValue.Index(i))
+			if configItem.Kind() == reflect.Struct || configItem.Kind() == reflect.Map {
+				parseMap(realItem, configItem)
+			}
 		case []interface{}:
-			parseSlice(realItem, configValue.Index(i))
+			if configItem.Kind() == reflect.Slice {
+				parseSlice(realItem, configItem)
+			}
 		case string:
-			configValue.Index(i).SetString(realItem)
+			if configItem.Kind() == reflect.String {
+				configItem.SetString(realItem)
+			}
 		case float64:
-			switch configValue.Index(i).Kind() {
+			switch configItem.Kind() {
 			case reflect.Float32, reflect.Float64:
-				configValue.Index(i).SetFloat(realItem)
+				configItem.SetFloat(realItem)
 			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-				configValue.Index(i).SetInt(int64(realItem))
+				configItem.SetInt(int64(realItem))
 			case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-				configValue.Index(i).SetUint(uint64(realItem))
+				configItem.SetUint(uint64(realItem))
 			}
 		case bool:
-			configValue.Index(i).SetBool(realItem)
+			if configItem.Kind() == reflect.Bool {
+				configItem.SetBool(realItem)
+			}
 		}
 	}
 }
