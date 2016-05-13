@@ -10,7 +10,7 @@ import (
 	"github.com/sironfoot/go-twitter-bot/lib/config"
 )
 
-type configuration struct {
+type complex struct {
 	StringValue string  `json:"stringValue"`
 	IntValue    int     `json:"intValue"`
 	FloatValue  float64 `json:"floatValue"`
@@ -41,7 +41,7 @@ type slicedConfig struct {
 	IntValue    int    `json:"intValue"`
 }
 
-var expectedConfig = configuration{
+var expectedConfig = complex{
 	StringValue: "Hello world",
 	IntValue:    123,
 	FloatValue:  123.45,
@@ -78,12 +78,12 @@ var expectedConfig = configuration{
 	},
 }
 
-func TestLoad(t *testing.T) {
+func TestLoad_NoEnvironment(t *testing.T) {
 	// arrange
-	var actualConfig configuration
+	var actualConfig complex
 
 	// act
-	err := config.Load("config.json", "dev", &actualConfig)
+	err := config.Load("complex.json", "dev", &actualConfig)
 
 	// assert
 	if err != nil {
@@ -95,9 +95,9 @@ func TestLoad(t *testing.T) {
 	}
 }
 
-func TestLoadWithAltConfig(t *testing.T) {
+func TestLoad_WithEnvironment(t *testing.T) {
 	// arrange
-	var actualConfig configuration
+	var actualConfig complex
 
 	altConfigString := `
     {
@@ -141,26 +141,26 @@ func TestLoadWithAltConfig(t *testing.T) {
         ]
     }`
 
-	var expectedAltConfig configuration
+	var expectedAltConfig complex
 	err := json.Unmarshal([]byte(altConfigString), &expectedAltConfig)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = ioutil.WriteFile("config.test.json", []byte(altConfigString), 0644)
+	err = ioutil.WriteFile("complex.test.json", []byte(altConfigString), 0644)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	defer func() {
-		err = os.Remove("config.test.json")
+		err = os.Remove("complex.test.json")
 		if err != nil {
 			t.Fatal(err)
 		}
 	}()
 
 	// act
-	err = config.Load("config.json", "test", &actualConfig)
+	err = config.Load("complex.json", "test", &actualConfig)
 
 	// assert
 	if err != nil {
@@ -172,9 +172,9 @@ func TestLoadWithAltConfig(t *testing.T) {
 	}
 }
 
-func TestLoadWithPartialConfig(t *testing.T) {
+func TestLoad_WithPartialEnvironment(t *testing.T) {
 	// arrange
-	var actualConfig configuration
+	var actualConfig complex
 
 	altConfigString := `
     {
@@ -189,20 +189,20 @@ func TestLoadWithPartialConfig(t *testing.T) {
         }
     }`
 
-	err := ioutil.WriteFile("config.test.json", []byte(altConfigString), 0644)
+	err := ioutil.WriteFile("complex.test.json", []byte(altConfigString), 0644)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	defer func() {
-		err = os.Remove("config.test.json")
+		err = os.Remove("complex.test.json")
 		if err != nil {
 			t.Fatal(err)
 		}
 	}()
 
 	// act
-	err = config.Load("config.json", "test", &actualConfig)
+	err = config.Load("complex.json", "test", &actualConfig)
 
 	// assert
 	if err != nil {

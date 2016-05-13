@@ -12,7 +12,7 @@ import (
 var ErrPrimaryConfigFileNotExist = fmt.Errorf("config: primary config file does not exist")
 
 // Load will load a configuration json file into a struct
-func Load(path, mode string, configData interface{}) (err error) {
+func Load(path, environment string, configData interface{}) (err error) {
 	file, err := os.Open(path)
 	if os.IsNotExist(err) {
 		return ErrPrimaryConfigFileNotExist
@@ -25,7 +25,7 @@ func Load(path, mode string, configData interface{}) (err error) {
 		return err
 	}
 
-	altPath := strings.Replace(path, ".json", "."+mode+".json", 1)
+	altPath := strings.Replace(path, ".json", "."+environment+".json", 1)
 
 	altFile, err := os.Open(altPath)
 	if err != nil && !os.IsNotExist(err) {
@@ -71,11 +71,17 @@ func parseMap(aMap map[string]interface{}, configValue reflect.Value) {
 
 		switch realValue := value.(type) {
 		case map[string]interface{}:
-			parseMap(realValue, fieldValue)
+			if fieldValue.Kind() == reflect.Struct || fieldValue.Kind() == reflect.Map {
+				parseMap(realValue, fieldValue)
+			}
 		case []interface{}:
-			parseSlice(realValue, fieldValue)
+			if fieldValue.Kind() == reflect.Slice {
+				parseSlice(realValue, fieldValue)
+			}
 		case string:
-			fieldValue.SetString(realValue)
+			if fieldValue.Kind() == reflect.String {
+				fieldValue.SetString(realValue)
+			}
 		case float64:
 			switch fieldValue.Kind() {
 			case reflect.Float32, reflect.Float64:
@@ -86,15 +92,15 @@ func parseMap(aMap map[string]interface{}, configValue reflect.Value) {
 				fieldValue.SetUint(uint64(realValue))
 			}
 		case bool:
-			fieldValue.SetBool(realValue)
+			if fieldValue.Kind() == reflect.Bool {
+				fieldValue.SetBool(realValue)
+			}
 		}
 	}
 }
 
 func parseSlice(aSlice []interface{}, configValue reflect.Value) {
-	configValue.SetLen(0)
-	configValue.SetCap(0)
-	newSlice := reflect.MakeSlice(reflect.SliceOf(configValue.Type().Elem()), len(aSlice), len(aSlice))
+	newSlice := reflect.MakeSlice(configValue.Type(), len(aSlice), len(aSlice))
 	configValue.Set(newSlice)
 
 	for i, value := range aSlice {
