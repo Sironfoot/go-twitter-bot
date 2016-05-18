@@ -14,6 +14,7 @@ import (
 	"github.com/sironfoot/go-twitter-bot/data/db"
 	"github.com/sironfoot/go-twitter-bot/data/models"
 	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/net/context"
 )
 
 type login struct {
@@ -22,7 +23,7 @@ type login struct {
 }
 
 // AccountLogin = POST/PUT: /account/login
-func AccountLogin(res http.ResponseWriter, req *http.Request) interface{} {
+func AccountLogin(ctx context.Context, res http.ResponseWriter, req *http.Request) interface{} {
 	var login models.Login
 
 	err := json.NewDecoder(req.Body).Decode(&login)
@@ -118,11 +119,11 @@ func AccountLogin(res http.ResponseWriter, req *http.Request) interface{} {
 }
 
 // AccountLogout = POST/PUT: /account/logout
-func AccountLogout(res http.ResponseWriter, req *http.Request) interface{} {
+func AccountLogout(ctx context.Context, res http.ResponseWriter, req *http.Request) interface{} {
 	return ""
 }
 
 // AccountSignup = POST/PUT: /account/signup
-func AccountSignup(res http.ResponseWriter, req *http.Request) interface{} {
+func AccountSignup(ctx context.Context, res http.ResponseWriter, req *http.Request) interface{} {
 	return ""
 }

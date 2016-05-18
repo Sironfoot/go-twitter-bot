@@ -6,7 +6,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gorilla/mux"
+	"goji.io/pat"
+
+	"golang.org/x/net/context"
+
 	"github.com/sironfoot/go-twitter-bot/data/db"
 	"github.com/sironfoot/go-twitter-bot/data/models"
 )
@@ -47,7 +50,7 @@ type tweet struct {
 }
 
 // TwitterAccountsAll = GET: /twitterAccounts
-func TwitterAccountsAll(res http.ResponseWriter, req *http.Request) interface{} {
+func TwitterAccountsAll(ctx context.Context, res http.ResponseWriter, req *http.Request) interface{} {
 	defaults := getPagingDefaults(db.TwitterAccountsOrderByDateCreated, false, db.TwitterAccountsSortableColumns)
 	paging, err := ExtractAndValidatePagingInfo(req, defaults)
 	if err != nil {
@@ -109,10 +112,9 @@ func TwitterAccountsAll(res http.ResponseWriter, req *http.Request) interface{} 
 	return model
 }
 
-// TwitterAccountGet = GET: /twitterAccount/{twitterAccountID}
-func TwitterAccountGet(res http.ResponseWriter, req *http.Request) interface{} {
-	vars := mux.Vars(req)
-	twitterAccountID := vars["twitterAccountID"]
+// TwitterAccountGet = GET: /twitterAccount/:twitterAccountID
+func TwitterAccountGet(ctx context.Context, res http.ResponseWriter, req *http.Request) interface{} {
+	twitterAccountID := pat.Param(ctx, "twitterAccountID")
 
 	account, err := db.TwitterAccountFromID(twitterAccountID)
 	if err == db.ErrEntityNotFound {
@@ -147,10 +149,9 @@ func TwitterAccountGet(res http.ResponseWriter, req *http.Request) interface{} {
 	return model
 }
 
-// TwitterAccountGetWithTweets = GET: /twitterAccounts/{twitterAccountID}/tweets
-func TwitterAccountGetWithTweets(res http.ResponseWriter, req *http.Request) interface{} {
-	vars := mux.Vars(req)
-	twitterAccountID := vars["twitterAccountID"]
+// TwitterAccountGetWithTweets = GET: /twitterAccounts/:twitterAccountID/tweets
+func TwitterAccountGetWithTweets(ctx context.Context, res http.ResponseWriter, req *http.Request) interface{} {
+	twitterAccountID := pat.Param(ctx, "twitterAccountID")
 
 	account, err := db.TwitterAccountFromID(twitterAccountID)
 	if err == db.ErrEntityNotFound {
@@ -225,10 +226,9 @@ func TwitterAccountGetWithTweets(res http.ResponseWriter, req *http.Request) int
 	return model
 }
 
-// TwitterAccountTweetCreate = POST: /twitterAccounts/{twitterAccountID}/tweets
-func TwitterAccountTweetCreate(res http.ResponseWriter, req *http.Request) interface{} {
-	vars := mux.Vars(req)
-	twitterAccountID := vars["twitterAccountID"]
+// TwitterAccountTweetCreate = POST: /twitterAccounts/:twitterAccountID/tweets
+func TwitterAccountTweetCreate(ctx context.Context, res http.ResponseWriter, req *http.Request) interface{} {
+	twitterAccountID := pat.Param(ctx, "twitterAccountID")
 
 	account, err := db.TwitterAccountFromID(twitterAccountID)
 	if err == db.ErrEntityNotFound {
@@ -283,10 +283,9 @@ func TwitterAccountTweetCreate(res http.ResponseWriter, req *http.Request) inter
 	return model
 }
 
-// TwitterAccountTweetUpdate = PUT: /twitterAccounts/{twitterAccountID}/tweets/{tweetID}
-func TwitterAccountTweetUpdate(res http.ResponseWriter, req *http.Request) interface{} {
-	vars := mux.Vars(req)
-	twitterAccountID := vars["twitterAccountID"]
+// TwitterAccountTweetUpdate = PUT: /twitterAccounts/:twitterAccountID/tweets/:tweetID
+func TwitterAccountTweetUpdate(ctx context.Context, res http.ResponseWriter, req *http.Request) interface{} {
+	twitterAccountID := pat.Param(ctx, "twitterAccountID")
 
 	account, err := db.TwitterAccountFromID(twitterAccountID)
 	if err == db.ErrEntityNotFound {
@@ -298,7 +297,7 @@ func TwitterAccountTweetUpdate(res http.ResponseWriter, req *http.Request) inter
 		panic(err)
 	}
 
-	tweetID := vars["tweetID"]
+	tweetID := pat.Param(ctx, "tweetID")
 	tweet, err := account.GetTweetFromID(tweetID)
 	if err == db.ErrEntityNotFound {
 		res.WriteHeader(http.StatusNotFound)
@@ -342,10 +341,9 @@ func TwitterAccountTweetUpdate(res http.ResponseWriter, req *http.Request) inter
 	}
 }
 
-// TwitterAccountTweetDelete = DELETE: /twitterAccounts/{twitterAccountID}/tweets/{tweetID}
-func TwitterAccountTweetDelete(res http.ResponseWriter, req *http.Request) interface{} {
-	vars := mux.Vars(req)
-	twitterAccountID := vars["twitterAccountID"]
+// TwitterAccountTweetDelete = DELETE: /twitterAccounts/:twitterAccountID/tweets/:tweetID
+func TwitterAccountTweetDelete(ctx context.Context, res http.ResponseWriter, req *http.Request) interface{} {
+	twitterAccountID := pat.Param(ctx, "twitterAccountID")
 
 	account, err := db.TwitterAccountFromID(twitterAccountID)
 	if err == db.ErrEntityNotFound {
@@ -357,7 +355,7 @@ func TwitterAccountTweetDelete(res http.ResponseWriter, req *http.Request) inter
 		panic(err)
 	}
 
-	tweetID := vars["tweetID"]
+	tweetID := pat.Param(ctx, "tweetID")
 	tweet, err := account.GetTweetFromID(tweetID)
 	if err == db.ErrEntityNotFound {
 		res.WriteHeader(http.StatusNotFound)

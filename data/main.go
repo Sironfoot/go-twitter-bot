@@ -7,10 +7,13 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/gorilla/mux"
 	"github.com/sironfoot/go-twitter-bot/data/api"
 	"github.com/sironfoot/go-twitter-bot/data/db"
 	"github.com/sironfoot/go-twitter-bot/lib/config"
+
+	"goji.io"
+	"goji.io/pat"
+	"golang.org/x/net/context"
 )
 
 // Config represents a configuration settings for the app
@@ -21,9 +24,8 @@ type Config struct {
 
 // Database represents database configuration settings for the app
 type Database struct {
-	DriverName       string  `json:"driverName"`
-	ConnectionString string  `json:"connectionString"`
-	Thing            *string `json:"thing"`
+	DriverName       string `json:"driverName"`
+	ConnectionString string `json:"connectionString"`
 }
 
 // AppSettings represents general application settings for the app
@@ -48,47 +50,49 @@ func main() {
 		log.Fatal(err)
 	}
 
-	router := mux.NewRouter()
+	router := goji.NewMux()
 
-	router.HandleFunc("/", func(res http.ResponseWriter, req *http.Request) {
+	// router.UseC(func(inner goji.Handler) goji.Handler {
+	// 	return goji.HandlerFunc(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	// 		log.Print("A: before")
+	// 		inner.ServeHTTPC(ctx, w, r)
+	// 		log.Print("A: after")
+	// 	})
+	// })
+
+	router.HandleFuncC(pat.Get("/"), func(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 		fmt.Fprintf(res, "Hello from GoBot Data server\n")
 	})
 
-	// Account actions
-	router.HandleFunc("/account/login", wrapJSON(api.AccountLogin)).
-		Methods("POST,PUT")
-	router.HandleFunc("/account/logout", wrapJSON(api.AccountLogout)).
-		Methods("POST,PUT")
-	router.HandleFunc("/account/signup", wrapJSON(api.AccountSignup)).
-		Methods("POST")
+	// Account
+	account := goji.SubMux()
+	router.HandleC(pat.New("/account/*"), account)
 
-	// User entity
-	router.HandleFunc("/users", wrapJSON(api.UsersAll)).
-		Methods("GET")
-	router.HandleFunc("/users/{userID}", wrapJSON(api.UserGet)).
-		Methods("GET")
-	router.HandleFunc("/users", wrapJSON(api.UserCreate)).
-		Methods("POST")
-	router.HandleFunc("/users/{userID}", wrapJSON(api.UserUpdate)).
-		Methods("PUT")
-	router.HandleFunc("/users/{userID}", wrapJSON(api.UserDelete)).
-		Methods("DELETE")
+	account.HandleFuncC(pat.Put("/login"), wrapJSON(api.AccountLogin))
+	account.HandleFuncC(pat.Put("/logout"), wrapJSON(api.AccountLogout))
+	account.HandleFuncC(pat.Post("/signup"), wrapJSON(api.AccountSignup))
 
-	// TwitterAccount entity
-	router.HandleFunc("/twitterAccounts", wrapJSON(api.TwitterAccountsAll)).
-		Methods("GET")
-	router.HandleFunc("/twitterAccounts/{twitterAccountID}", wrapJSON(api.TwitterAccountGet)).
-		Methods("GET")
+	// Users
+	users := goji.SubMux()
+	router.HandleC(pat.New("/users/*"), users)
 
-	// Tweet entity (child of TwitterAccount)
-	router.HandleFunc("/twitterAccounts/{twitterAccountID}/tweets", wrapJSON(api.TwitterAccountGetWithTweets)).
-		Methods("GET")
-	router.HandleFunc("/twitterAccounts/{twitterAccountID}/tweets", wrapJSON(api.TwitterAccountTweetCreate)).
-		Methods("POST")
-	router.HandleFunc("/twitterAccounts/{twitterAccountID}/tweets/{tweetID}", wrapJSON(api.TwitterAccountTweetUpdate)).
-		Methods("PUT")
-	router.HandleFunc("/twitterAccounts/{twitterAccountID}/tweets/{tweetID}", wrapJSON(api.TwitterAccountTweetDelete)).
-		Methods("DELETE")
+	users.HandleFuncC(pat.Get("/"), wrapJSON(api.UsersAll))
+	users.HandleFuncC(pat.Post("/"), wrapJSON(api.UserCreate))
+	users.HandleFuncC(pat.Get("/:userID"), wrapJSON(api.UserGet))
+	users.HandleFuncC(pat.Put("/:userID"), wrapJSON(api.UserUpdate))
+	users.HandleFuncC(pat.Delete(":/userID"), wrapJSON(api.UserDelete))
+
+	// TwitterAccounts
+	twitterAccounts := goji.SubMux()
+	router.HandleC(pat.New("/twitterAccounts/*"), twitterAccounts)
+
+	twitterAccounts.HandleFuncC(pat.Get("/"), wrapJSON(api.TwitterAccountsAll))
+	twitterAccounts.HandleFuncC(pat.Get("/:twitterAccountID"), wrapJSON(api.TwitterAccountGet))
+
+	twitterAccounts.HandleFuncC(pat.Get("/:twitterAccountID/tweets"), wrapJSON(api.TwitterAccountGetWithTweets))
+	twitterAccounts.HandleFuncC(pat.Post("/:twitterAccountID/tweets"), wrapJSON(api.TwitterAccountTweetCreate))
+	twitterAccounts.HandleFuncC(pat.Put("/:twitterAccountID/tweets/:tweetID"), wrapJSON(api.TwitterAccountTweetUpdate))
+	twitterAccounts.HandleFuncC(pat.Delete("/:twitterAccountID/tweets/:tweetID"), wrapJSON(api.TwitterAccountTweetDelete))
 
 	server := http.Server{
 		Addr:    *addr,
@@ -96,12 +100,12 @@ func main() {
 	}
 
 	log.Printf("GoBot Data Server running on %s...\n", *addr)
-	server.ListenAndServe()
+	log.Fatal(server.ListenAndServe())
 }
 
-func wrapJSON(apiFunc func(http.ResponseWriter, *http.Request) interface{}) http.HandlerFunc {
-	return func(res http.ResponseWriter, req *http.Request) {
-		response := apiFunc(res, req)
+func wrapJSON(apiFunc func(context.Context, http.ResponseWriter, *http.Request) interface{}) goji.HandlerFunc {
+	return func(ctx context.Context, res http.ResponseWriter, req *http.Request) {
+		response := apiFunc(ctx, res, req)
 
 		defer func() {
 			res.Header().Set("Content-Type", "application/json")

@@ -6,10 +6,12 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gorilla/mux"
+	"goji.io/pat"
+
 	"github.com/sironfoot/go-twitter-bot/data/db"
 	"github.com/sironfoot/go-twitter-bot/data/models"
 	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/net/context"
 )
 
 type user struct {
@@ -22,7 +24,7 @@ type user struct {
 }
 
 // UsersAll = GET: /users
-func UsersAll(res http.ResponseWriter, req *http.Request) interface{} {
+func UsersAll(ctx context.Context, res http.ResponseWriter, req *http.Request) interface{} {
 	defaults := getPagingDefaults(db.UsersOrderByDateCreated, false, db.UsersSortableColumns)
 	paging, err := ExtractAndValidatePagingInfo(req, defaults)
 	if err != nil {
@@ -60,10 +62,9 @@ func UsersAll(res http.ResponseWriter, req *http.Request) interface{} {
 	return model
 }
 
-// UserGet = GET: /users/[userID]
-func UserGet(res http.ResponseWriter, req *http.Request) interface{} {
-	vars := mux.Vars(req)
-	userID := vars["userID"]
+// UserGet = GET: /users/:userID
+func UserGet(ctx context.Context, res http.ResponseWriter, req *http.Request) interface{} {
+	userID := pat.Param(ctx, "userID")
 
 	userDB, err := db.UserFromID(userID)
 	if err == db.ErrEntityNotFound {
@@ -93,7 +94,7 @@ func UserGet(res http.ResponseWriter, req *http.Request) interface{} {
 }
 
 // UserCreate = POST: /users
-func UserCreate(res http.ResponseWriter, req *http.Request) interface{} {
+func UserCreate(ctx context.Context, res http.ResponseWriter, req *http.Request) interface{} {
 	var newUser models.User
 
 	err := json.NewDecoder(req.Body).Decode(&newUser)
@@ -143,8 +144,8 @@ func UserCreate(res http.ResponseWriter, req *http.Request) interface{} {
 	return model
 }
 
-// UserUpdate = PUT: /users/{userID}
-func UserUpdate(res http.ResponseWriter, req *http.Request) interface{} {
+// UserUpdate = PUT: /users/:userID
+func UserUpdate(ctx context.Context, res http.ResponseWriter, req *http.Request) interface{} {
 	var updateUser models.User
 
 	err := json.NewDecoder(req.Body).Decode(&updateUser)
@@ -153,8 +154,7 @@ func UserUpdate(res http.ResponseWriter, req *http.Request) interface{} {
 	}
 	req.Body.Close()
 
-	vars := mux.Vars(req)
-	userID := vars["userID"]
+	userID := pat.Param(ctx, "userID")
 
 	user, err := db.UserFromID(userID)
 	if err != nil && err != db.ErrEntityNotFound {
@@ -204,10 +204,9 @@ func UserUpdate(res http.ResponseWriter, req *http.Request) interface{} {
 	}
 }
 
-// UserDelete = DELETE: /users/{userID}
-func UserDelete(res http.ResponseWriter, req *http.Request) interface{} {
-	vars := mux.Vars(req)
-	userID := vars["userID"]
+// UserDelete = DELETE: /users/:userID
+func UserDelete(ctx context.Context, res http.ResponseWriter, req *http.Request) interface{} {
+	userID := pat.Param(ctx, "userID")
 
 	user, err := db.UserFromID(userID)
 	if err != nil && err != db.ErrEntityNotFound {
