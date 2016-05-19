@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"regexp"
 
 	"github.com/sironfoot/go-twitter-bot/data/api"
 	"github.com/sironfoot/go-twitter-bot/data/db"
@@ -52,13 +53,18 @@ func main() {
 
 	router := goji.NewMux()
 
-	// router.UseC(func(inner goji.Handler) goji.Handler {
-	// 	return goji.HandlerFunc(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	// 		log.Print("A: before")
-	// 		inner.ServeHTTPC(ctx, w, r)
-	// 		log.Print("A: after")
-	// 	})
-	// })
+	router.UseC(func(inner goji.Handler) goji.Handler {
+		isRootPathMissingTrailingSlash := regexp.MustCompile(`(?i)^/[a-z0-9]+$`)
+
+		return goji.HandlerFunc(func(ctx context.Context, res http.ResponseWriter, req *http.Request) {
+			if isRootPathMissingTrailingSlash.MatchString(req.URL.Path) {
+				res.Header().Set("Location", req.URL.Path+"/")
+				res.WriteHeader(http.StatusMovedPermanently)
+			} else {
+				inner.ServeHTTPC(ctx, res, req)
+			}
+		})
+	})
 
 	router.HandleFuncC(pat.Get("/"), func(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 		fmt.Fprintf(res, "Hello from GoBot Data server\n")
@@ -80,7 +86,7 @@ func main() {
 	users.HandleFuncC(pat.Post("/"), wrapJSON(api.UserCreate))
 	users.HandleFuncC(pat.Get("/:userID"), wrapJSON(api.UserGet))
 	users.HandleFuncC(pat.Put("/:userID"), wrapJSON(api.UserUpdate))
-	users.HandleFuncC(pat.Delete(":/userID"), wrapJSON(api.UserDelete))
+	users.HandleFuncC(pat.Delete("/:userID"), wrapJSON(api.UserDelete))
 
 	// TwitterAccounts
 	twitterAccounts := goji.SubMux()
