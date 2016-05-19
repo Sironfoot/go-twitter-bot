@@ -24,11 +24,14 @@ type user struct {
 }
 
 // UsersAll = GET: /users
-func UsersAll(ctx context.Context, res http.ResponseWriter, req *http.Request) interface{} {
+func UsersAll(ctx context.Context, res http.ResponseWriter, req *http.Request) {
+	appContext := ctx.Value("appContext").(*AppContext)
+
 	defaults := getPagingDefaults(db.UsersOrderByDateCreated, false, db.UsersSortableColumns)
 	paging, err := ExtractAndValidatePagingInfo(req, defaults)
 	if err != nil {
-		return messageResponse{err.Error()}
+		appContext.Response = messageResponse{err.Error()}
+		return
 	}
 
 	model := struct {
@@ -59,18 +62,20 @@ func UsersAll(ctx context.Context, res http.ResponseWriter, req *http.Request) i
 	model.TotalRecords = totalRecords
 	model.Users = users
 
-	return model
+	appContext.Response = model
 }
 
 // UserGet = GET: /users/:userID
-func UserGet(ctx context.Context, res http.ResponseWriter, req *http.Request) interface{} {
+func UserGet(ctx context.Context, res http.ResponseWriter, req *http.Request) {
+	appContext := ctx.Value("appContext").(*AppContext)
 	userID := pat.Param(ctx, "userID")
 
 	userDB, err := db.UserFromID(userID)
 	if err == db.ErrEntityNotFound {
-		return messageResponse{
+		appContext.Response = messageResponse{
 			Message: fmt.Sprintf("User not found on ID: %s", userID),
 		}
+		return
 	} else if err != nil {
 		panic(err)
 	}
@@ -90,11 +95,12 @@ func UserGet(ctx context.Context, res http.ResponseWriter, req *http.Request) in
 		DateCreated: userDB.DateCreated,
 	}
 
-	return model
+	appContext.Response = model
 }
 
 // UserCreate = POST: /users
-func UserCreate(ctx context.Context, res http.ResponseWriter, req *http.Request) interface{} {
+func UserCreate(ctx context.Context, res http.ResponseWriter, req *http.Request) {
+	appContext := ctx.Value("appContext").(*AppContext)
 	var newUser models.User
 
 	err := json.NewDecoder(req.Body).Decode(&newUser)
@@ -114,11 +120,14 @@ func UserCreate(ctx context.Context, res http.ResponseWriter, req *http.Request)
 	if len(validationErrors) > 0 {
 		model.Message = "User model is invalid."
 		model.Errors = validationErrors
+		appContext.Response = model
+
 		res.WriteHeader(http.StatusBadRequest)
-		return model
+		return
 	}
 
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newUser.Password), 12)
+	bcryptWorkFactor := appContext.Settings.AppSettings.BCryptWorkFactor
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newUser.Password), bcryptWorkFactor)
 	if err != nil {
 		panic(err)
 	}
@@ -141,11 +150,12 @@ func UserCreate(ctx context.Context, res http.ResponseWriter, req *http.Request)
 	model.ID = &user.ID
 	res.WriteHeader(http.StatusCreated)
 
-	return model
+	appContext.Response = model
 }
 
 // UserUpdate = PUT: /users/:userID
-func UserUpdate(ctx context.Context, res http.ResponseWriter, req *http.Request) interface{} {
+func UserUpdate(ctx context.Context, res http.ResponseWriter, req *http.Request) {
+	appContext := ctx.Value("appContext").(*AppContext)
 	var updateUser models.User
 
 	err := json.NewDecoder(req.Body).Decode(&updateUser)
@@ -163,9 +173,10 @@ func UserUpdate(ctx context.Context, res http.ResponseWriter, req *http.Request)
 
 	if err == db.ErrEntityNotFound {
 		res.WriteHeader(http.StatusNotFound)
-		return messageResponse{
+		appContext.Response = messageResponse{
 			Message: fmt.Sprintf("User not found on ID: %s", userID),
 		}
+		return
 	}
 
 	updateUser.Sanitise()
@@ -176,17 +187,19 @@ func UserUpdate(ctx context.Context, res http.ResponseWriter, req *http.Request)
 
 	if len(validationErrors) > 0 {
 		res.WriteHeader(http.StatusBadRequest)
-		return updateResponse{
+		appContext.Response = updateResponse{
 			Message: "User model is invalid.",
 			Errors:  validationErrors,
 		}
+		return
 	}
 
 	user.Email = updateUser.Email
 	user.IsAdmin = updateUser.IsAdmin
 
 	if updateUser.Password != "" {
-		hashedPassword, bcryptErr := bcrypt.GenerateFromPassword([]byte(updateUser.Password), 12)
+		bcryptWorkFactor := appContext.Settings.AppSettings.BCryptWorkFactor
+		hashedPassword, bcryptErr := bcrypt.GenerateFromPassword([]byte(updateUser.Password), bcryptWorkFactor)
 		if bcryptErr != nil {
 			panic(bcryptErr)
 		}
@@ -199,13 +212,14 @@ func UserUpdate(ctx context.Context, res http.ResponseWriter, req *http.Request)
 		panic(err)
 	}
 
-	return messageResponse{
+	appContext.Response = messageResponse{
 		Message: ok,
 	}
 }
 
 // UserDelete = DELETE: /users/:userID
-func UserDelete(ctx context.Context, res http.ResponseWriter, req *http.Request) interface{} {
+func UserDelete(ctx context.Context, res http.ResponseWriter, req *http.Request) {
+	appContext := ctx.Value("appContext").(*AppContext)
 	userID := pat.Param(ctx, "userID")
 
 	user, err := db.UserFromID(userID)
@@ -215,9 +229,10 @@ func UserDelete(ctx context.Context, res http.ResponseWriter, req *http.Request)
 
 	if err == db.ErrEntityNotFound {
 		res.WriteHeader(http.StatusNotFound)
-		return messageResponse{
+		appContext.Response = messageResponse{
 			Message: fmt.Sprintf("User not found on ID: %s", userID),
 		}
+		return
 	}
 
 	err = user.Delete()
@@ -225,7 +240,7 @@ func UserDelete(ctx context.Context, res http.ResponseWriter, req *http.Request)
 		panic(err)
 	}
 
-	return messageResponse{
+	appContext.Response = messageResponse{
 		Message: ok,
 	}
 }

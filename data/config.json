@@ -6,6 +6,7 @@
 
     "appSettings": {
         "serverAddress": "localhost:7001",
-        "encryptionKey": "DONKEY_RHUBARB"
+        "encryptionKey": "DONKEY_RHUBARB",
+        "bcryptWorkFactor": 12
     }
 }

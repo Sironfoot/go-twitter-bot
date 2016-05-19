@@ -10,15 +10,37 @@ import (
 	"github.com/sironfoot/go-twitter-bot/data/models"
 )
 
+// AppContext is an app specific context struct to hold per request variables
+type AppContext struct {
+	Settings Config
+	Response interface{}
+}
+
+// Config represents a configuration settings for the app
+type Config struct {
+	Database    Database    `json:"database"`
+	AppSettings AppSettings `json:"appSettings"`
+}
+
+// Database represents database configuration settings for the app
+type Database struct {
+	DriverName       string `json:"driverName"`
+	ConnectionString string `json:"connectionString"`
+}
+
+// AppSettings represents general application settings for the app
+type AppSettings struct {
+	ServerAddress    string `json:"serverAddress"`
+	EncryptionKey    string `json:"encryptionKey"`
+	BCryptWorkFactor int    `json:"bcryptWorkFactor"`
+}
+
 const ok = "OK"
 const (
 	defaultRecordsPerPage = 20
 	maxPage               = 100
 	maxRecordsPerPage     = 100
 )
-
-// TODO: put this in config file and exclude from git before deploying
-const encryptionKey = "DONKEY_RHUBARB"
 
 type messageResponse struct {
 	Message string `json:"message"`

@@ -23,7 +23,8 @@ type login struct {
 }
 
 // AccountLogin = POST/PUT: /account/login
-func AccountLogin(ctx context.Context, res http.ResponseWriter, req *http.Request) interface{} {
+func AccountLogin(ctx context.Context, res http.ResponseWriter, req *http.Request) {
+	appContext := ctx.Value("appContext").(*AppContext)
 	var login models.Login
 
 	err := json.NewDecoder(req.Body).Decode(&login)
@@ -40,10 +41,11 @@ func AccountLogin(ctx context.Context, res http.ResponseWriter, req *http.Reques
 
 	if len(validationErrors) > 0 {
 		res.WriteHeader(http.StatusBadRequest)
-		return updateResponse{
+		appContext.Response = updateResponse{
 			Message: "Login model is invalid.",
 			Errors:  validationErrors,
 		}
+		return
 	}
 
 	// check user exists for email
@@ -58,10 +60,11 @@ func AccountLogin(ctx context.Context, res http.ResponseWriter, req *http.Reques
 			Message:   fmt.Sprintf("User not found on email %s", login.Email),
 		})
 
-		return updateResponse{
+		appContext.Response = updateResponse{
 			Message: "Login model is invalid.",
 			Errors:  validationErrors,
 		}
+		return
 	} else if err != nil {
 		panic(err)
 	}
@@ -78,10 +81,11 @@ func AccountLogin(ctx context.Context, res http.ResponseWriter, req *http.Reques
 				Message:   fmt.Sprintf("Password not correct for user %s", login.Email),
 			})
 
-			return updateResponse{
+			appContext.Response = updateResponse{
 				Message: "Login model is invalid.",
 				Errors:  validationErrors,
 			}
+			return
 		}
 
 		panic(err)
@@ -98,7 +102,7 @@ func AccountLogin(ctx context.Context, res http.ResponseWriter, req *http.Reques
 		Valid:  true,
 	}
 
-	cypher, err := aes.NewCipher([]byte(encryptionKey))
+	cypher, err := aes.NewCipher([]byte(appContext.Settings.AppSettings.EncryptionKey))
 	if err != nil {
 		panic(err)
 	}
@@ -109,7 +113,7 @@ func AccountLogin(ctx context.Context, res http.ResponseWriter, req *http.Reques
 	cypher.Encrypt(encryptedTokenBytes, plaintextTokenBytes)
 	accessToken := base64.StdEncoding.EncodeToString(encryptedTokenBytes)
 
-	return struct {
+	appContext.Response = struct {
 		Message     string `json:"message"`
 		AccessToken string `json:"accessToken"`
 	}{
@@ -119,11 +123,11 @@ func AccountLogin(ctx context.Context, res http.ResponseWriter, req *http.Reques
 }
 
 // AccountLogout = POST/PUT: /account/logout
-func AccountLogout(ctx context.Context, res http.ResponseWriter, req *http.Request) interface{} {
-	return ""
+func AccountLogout(ctx context.Context, res http.ResponseWriter, req *http.Request) {
+	res.WriteHeader(http.StatusNotImplemented)
 }
 
 // AccountSignup = POST/PUT: /account/signup
-func AccountSignup(ctx context.Context, res http.ResponseWriter, req *http.Request) interface{} {
-	return ""
+func AccountSignup(ctx context.Context, res http.ResponseWriter, req *http.Request) {
+	res.WriteHeader(http.StatusNotImplemented)
 }

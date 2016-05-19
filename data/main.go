@@ -17,26 +17,8 @@ import (
 	"golang.org/x/net/context"
 )
 
-// Config represents a configuration settings for the app
-type Config struct {
-	Database    Database    `json:"database"`
-	AppSettings AppSettings `json:"appSettings"`
-}
-
-// Database represents database configuration settings for the app
-type Database struct {
-	DriverName       string `json:"driverName"`
-	ConnectionString string `json:"connectionString"`
-}
-
-// AppSettings represents general application settings for the app
-type AppSettings struct {
-	ServerAddress string `json:"serverAddress"`
-	EncryptionKey string `json:"encryptionKey"`
-}
-
 func main() {
-	var configuration Config
+	var configuration api.Config
 	err := config.Load("config.json", "dev", &configuration)
 	if err != nil {
 		log.Fatal(err)
@@ -53,7 +35,17 @@ func main() {
 
 	router := goji.NewMux()
 
-	router.UseC(func(inner goji.Handler) goji.Handler {
+	router.UseC(func(next goji.Handler) goji.Handler {
+		return goji.HandlerFunc(func(ctx context.Context, res http.ResponseWriter, req *http.Request) {
+			appContext := api.AppContext{}
+			appContext.Settings = configuration
+			ctx = context.WithValue(ctx, "appContext", &appContext)
+
+			next.ServeHTTPC(ctx, res, req)
+		})
+	})
+
+	router.UseC(func(next goji.Handler) goji.Handler {
 		isRootPathMissingTrailingSlash := regexp.MustCompile(`(?i)^/[a-z0-9]+$`)
 
 		return goji.HandlerFunc(func(ctx context.Context, res http.ResponseWriter, req *http.Request) {
@@ -61,8 +53,31 @@ func main() {
 				res.Header().Set("Location", req.URL.Path+"/")
 				res.WriteHeader(http.StatusMovedPermanently)
 			} else {
-				inner.ServeHTTPC(ctx, res, req)
+				next.ServeHTTPC(ctx, res, req)
 			}
+		})
+	})
+
+	router.UseC(func(next goji.Handler) goji.Handler {
+		return goji.HandlerFunc(func(ctx context.Context, res http.ResponseWriter, req *http.Request) {
+			next.ServeHTTPC(ctx, res, req)
+
+			response := ctx.Value("appContext").(*api.AppContext).Response
+
+			res.Header().Set("Content-Type", "application/json")
+
+			if response == nil {
+				response = struct {
+					Message string `json:"message"`
+				}{"Response message was missing."}
+				res.WriteHeader(http.StatusInternalServerError)
+			}
+
+			data, jsonErr := json.MarshalIndent(response, "", "    ")
+			if jsonErr != nil {
+				panic(jsonErr)
+			}
+			res.Write(data)
 		})
 	})
 
@@ -74,31 +89,31 @@ func main() {
 	account := goji.SubMux()
 	router.HandleC(pat.New("/account/*"), account)
 
-	account.HandleFuncC(pat.Put("/login"), wrapJSON(api.AccountLogin))
-	account.HandleFuncC(pat.Put("/logout"), wrapJSON(api.AccountLogout))
-	account.HandleFuncC(pat.Post("/signup"), wrapJSON(api.AccountSignup))
+	account.HandleFuncC(pat.Put("/login"), api.AccountLogin)
+	account.HandleFuncC(pat.Put("/logout"), api.AccountLogout)
+	account.HandleFuncC(pat.Post("/signup"), api.AccountSignup)
 
 	// Users
 	users := goji.SubMux()
 	router.HandleC(pat.New("/users/*"), users)
 
-	users.HandleFuncC(pat.Get("/"), wrapJSON(api.UsersAll))
-	users.HandleFuncC(pat.Post("/"), wrapJSON(api.UserCreate))
-	users.HandleFuncC(pat.Get("/:userID"), wrapJSON(api.UserGet))
-	users.HandleFuncC(pat.Put("/:userID"), wrapJSON(api.UserUpdate))
-	users.HandleFuncC(pat.Delete("/:userID"), wrapJSON(api.UserDelete))
+	users.HandleFuncC(pat.Get("/"), api.UsersAll)
+	users.HandleFuncC(pat.Post("/"), api.UserCreate)
+	users.HandleFuncC(pat.Get("/:userID"), api.UserGet)
+	users.HandleFuncC(pat.Put("/:userID"), api.UserUpdate)
+	users.HandleFuncC(pat.Delete("/:userID"), api.UserDelete)
 
 	// TwitterAccounts
 	twitterAccounts := goji.SubMux()
 	router.HandleC(pat.New("/twitterAccounts/*"), twitterAccounts)
 
-	twitterAccounts.HandleFuncC(pat.Get("/"), wrapJSON(api.TwitterAccountsAll))
-	twitterAccounts.HandleFuncC(pat.Get("/:twitterAccountID"), wrapJSON(api.TwitterAccountGet))
+	twitterAccounts.HandleFuncC(pat.Get("/"), api.TwitterAccountsAll)
+	twitterAccounts.HandleFuncC(pat.Get("/:twitterAccountID"), api.TwitterAccountGet)
 
-	twitterAccounts.HandleFuncC(pat.Get("/:twitterAccountID/tweets"), wrapJSON(api.TwitterAccountGetWithTweets))
-	twitterAccounts.HandleFuncC(pat.Post("/:twitterAccountID/tweets"), wrapJSON(api.TwitterAccountTweetCreate))
-	twitterAccounts.HandleFuncC(pat.Put("/:twitterAccountID/tweets/:tweetID"), wrapJSON(api.TwitterAccountTweetUpdate))
-	twitterAccounts.HandleFuncC(pat.Delete("/:twitterAccountID/tweets/:tweetID"), wrapJSON(api.TwitterAccountTweetDelete))
+	twitterAccounts.HandleFuncC(pat.Get("/:twitterAccountID/tweets"), api.TwitterAccountGetWithTweets)
+	twitterAccounts.HandleFuncC(pat.Post("/:twitterAccountID/tweets"), api.TwitterAccountTweetCreate)
+	twitterAccounts.HandleFuncC(pat.Put("/:twitterAccountID/tweets/:tweetID"), api.TwitterAccountTweetUpdate)
+	twitterAccounts.HandleFuncC(pat.Delete("/:twitterAccountID/tweets/:tweetID"), api.TwitterAccountTweetDelete)
 
 	server := http.Server{
 		Addr:    *addr,
@@ -107,20 +122,4 @@ func main() {
 
 	log.Printf("GoBot Data Server running on %s...\n", *addr)
 	log.Fatal(server.ListenAndServe())
-}
-
-func wrapJSON(apiFunc func(context.Context, http.ResponseWriter, *http.Request) interface{}) goji.HandlerFunc {
-	return func(ctx context.Context, res http.ResponseWriter, req *http.Request) {
-		response := apiFunc(ctx, res, req)
-
-		defer func() {
-			res.Header().Set("Content-Type", "application/json")
-
-			data, jsonErr := json.MarshalIndent(response, "", "    ")
-			if jsonErr != nil {
-				panic(jsonErr)
-			}
-			res.Write(data)
-		}()
-	}
 }
