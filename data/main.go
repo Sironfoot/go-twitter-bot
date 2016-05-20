@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"regexp"
 
 	"github.com/sironfoot/go-twitter-bot/data/api"
 	"github.com/sironfoot/go-twitter-bot/data/db"
@@ -46,15 +45,15 @@ func main() {
 	})
 
 	router.UseC(func(next goji.Handler) goji.Handler {
-		isRootPathMissingTrailingSlash := regexp.MustCompile(`(?i)^/[a-z0-9]+$`)
+		//isRootPathMissingTrailingSlash := regexp.MustCompile(`(?i)^/[a-z0-9]+$`)
 
 		return goji.HandlerFunc(func(ctx context.Context, res http.ResponseWriter, req *http.Request) {
-			if isRootPathMissingTrailingSlash.MatchString(req.URL.Path) {
-				res.Header().Set("Location", req.URL.Path+"/")
-				res.WriteHeader(http.StatusMovedPermanently)
-			} else {
-				next.ServeHTTPC(ctx, res, req)
-			}
+			// if isRootPathMissingTrailingSlash.MatchString(req.URL.Path) {
+			// 	res.Header().Set("Location", req.URL.Path+"/")
+			// 	res.WriteHeader(http.StatusMovedPermanently)
+			// } else {
+			next.ServeHTTPC(ctx, res, req)
+			//}
 		})
 	})
 
@@ -96,9 +95,10 @@ func main() {
 	// Users
 	users := goji.SubMux()
 	router.HandleC(pat.New("/users/*"), users)
+	router.HandleC(pat.New("/users"), users)
 
-	users.HandleFuncC(pat.Get("/"), api.UsersAll)
-	users.HandleFuncC(pat.Post("/"), api.UserCreate)
+	users.HandleFuncC(pat.Get(""), api.UsersAll)
+	users.HandleFuncC(pat.Post(""), api.UserCreate)
 	users.HandleFuncC(pat.Get("/:userID"), api.UserGet)
 	users.HandleFuncC(pat.Put("/:userID"), api.UserUpdate)
 	users.HandleFuncC(pat.Delete("/:userID"), api.UserDelete)
@@ -106,8 +106,9 @@ func main() {
 	// TwitterAccounts
 	twitterAccounts := goji.SubMux()
 	router.HandleC(pat.New("/twitterAccounts/*"), twitterAccounts)
+	router.HandleC(pat.New("/twitterAccounts"), twitterAccounts)
 
-	twitterAccounts.HandleFuncC(pat.Get("/"), api.TwitterAccountsAll)
+	twitterAccounts.HandleFuncC(pat.Get(""), api.TwitterAccountsAll)
 	twitterAccounts.HandleFuncC(pat.Get("/:twitterAccountID"), api.TwitterAccountGet)
 
 	twitterAccounts.HandleFuncC(pat.Get("/:twitterAccountID/tweets"), api.TwitterAccountGetWithTweets)
