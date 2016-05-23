@@ -13,6 +13,7 @@ import (
 // AppContext is an app specific context struct to hold per request variables
 type AppContext struct {
 	Settings Config
+	AuthUser *db.User
 	Response interface{}
 }
 

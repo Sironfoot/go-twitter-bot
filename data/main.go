@@ -1,10 +1,13 @@
 package main
 
 import (
+	"crypto/aes"
+	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/sironfoot/go-twitter-bot/data/api"
 	"github.com/sironfoot/go-twitter-bot/data/db"
@@ -34,6 +37,7 @@ func main() {
 
 	router := goji.NewMux()
 
+	// 1. Error handling
 	router.UseC(func(next goji.Handler) goji.Handler {
 		return goji.HandlerFunc(func(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 			defer func() {
@@ -59,6 +63,7 @@ func main() {
 		})
 	})
 
+	// 2. Setup request context values
 	router.UseC(func(next goji.Handler) goji.Handler {
 		return goji.HandlerFunc(func(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 			res.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -71,6 +76,57 @@ func main() {
 		})
 	})
 
+	// 3. Check authorisation/logged in state
+	router.UseC(func(next goji.Handler) goji.Handler {
+		return goji.HandlerFunc(func(ctx context.Context, res http.ResponseWriter, req *http.Request) {
+			defer func() {
+				next.ServeHTTPC(ctx, res, req)
+			}()
+
+			accessToken := req.Header.Get("accessToken")
+			if len(accessToken) == 0 {
+				return
+			}
+
+			encryptedBytes, err := base64.StdEncoding.DecodeString(accessToken)
+			if err != nil {
+				// not a valid Base64 string, force user to log in again
+				res.Header().Del("accessToken")
+				return
+			}
+
+			appContext := ctx.Value("appContext").(*api.AppContext)
+			cipher, err := aes.NewCipher([]byte(appContext.Settings.AppSettings.EncryptionKey))
+			if err != nil {
+				panic(err)
+			}
+
+			var decryptedTokenBytes []byte
+			cipher.Decrypt(decryptedTokenBytes, encryptedBytes)
+
+			token := string(decryptedTokenBytes)
+			tokenParts := strings.Split(token, "_")
+			if len(tokenParts) != 2 {
+				// not a valid format (UserID_AuthToken), force user to log in again
+				res.Header().Del("accessToken")
+				return
+			}
+
+			userID := tokenParts[0]
+			authToken := tokenParts[1]
+
+			user, err := db.UserFromID(userID)
+			if err != nil {
+				panic(err)
+			}
+
+			if user.AuthToken.Valid && user.AuthToken.String == authToken {
+				appContext.AuthUser = &user
+			}
+		})
+	})
+
+	// 4. Check for 404
 	var notFoundHandler = func(next goji.Handler) goji.Handler {
 		return goji.HandlerFunc(func(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 			if middleware.Handler(ctx) == nil {
@@ -93,6 +149,7 @@ func main() {
 
 	router.UseC(notFoundHandler)
 
+	// 5. Serve response as JSON
 	router.UseC(func(next goji.Handler) goji.Handler {
 		return goji.HandlerFunc(func(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 			next.ServeHTTPC(ctx, res, req)
@@ -108,6 +165,27 @@ func main() {
 			}
 		})
 	})
+
+	var mustBeLoggedIn = func(next goji.Handler) goji.Handler {
+		return goji.HandlerFunc(func(ctx context.Context, res http.ResponseWriter, req *http.Request) {
+			appContext := ctx.Value("appContext").(*api.AppContext)
+
+			if appContext.AuthUser == nil {
+				res.WriteHeader(http.StatusUnauthorized)
+
+				response := api.MessageResponse{
+					Message: "Not authenticated. Please authenticate with PUT: /account/login",
+				}
+				data, jsonErr := json.MarshalIndent(response, "", "    ")
+				if jsonErr != nil {
+					panic(jsonErr)
+				}
+				res.Write(data)
+			} else {
+				next.ServeHTTPC(ctx, res, req)
+			}
+		})
+	}
 
 	router.HandleFuncC(pat.Get("/"), func(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 		appContext := ctx.Value("appContext").(*api.AppContext)
@@ -129,6 +207,7 @@ func main() {
 	// Users
 	users := goji.SubMux()
 	users.UseC(notFoundHandler)
+	users.UseC(mustBeLoggedIn)
 	router.HandleC(pat.New("/users/*"), users)
 	router.HandleC(pat.New("/users"), users)
 
@@ -141,6 +220,7 @@ func main() {
 	// TwitterAccounts
 	twitterAccounts := goji.SubMux()
 	twitterAccounts.UseC(notFoundHandler)
+	twitterAccounts.UseC(mustBeLoggedIn)
 	router.HandleC(pat.New("/twitterAccounts/*"), twitterAccounts)
 	router.HandleC(pat.New("/twitterAccounts"), twitterAccounts)
 

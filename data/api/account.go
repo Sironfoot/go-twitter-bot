@@ -118,7 +118,7 @@ func AccountLogin(ctx context.Context, res http.ResponseWriter, req *http.Reques
 		Message     string `json:"message"`
 		AccessToken string `json:"accessToken"`
 	}{
-		Message:     "",
+		Message:     ok,
 		AccessToken: accessToken,
 	}
 }
