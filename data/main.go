@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"flag"
-	"fmt"
 	"log"
 	"net/http"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/sironfoot/go-twitter-bot/lib/config"
 
 	"goji.io"
+	"goji.io/middleware"
 	"goji.io/pat"
 	"golang.org/x/net/context"
 )
@@ -36,6 +36,8 @@ func main() {
 
 	router.UseC(func(next goji.Handler) goji.Handler {
 		return goji.HandlerFunc(func(ctx context.Context, res http.ResponseWriter, req *http.Request) {
+			res.Header().Set("Content-Type", "application/json; charset=utf-8")
+
 			appContext := api.AppContext{}
 			appContext.Settings = configuration
 			ctx = context.WithValue(ctx, "appContext", &appContext)
@@ -44,18 +46,29 @@ func main() {
 		})
 	})
 
-	router.UseC(func(next goji.Handler) goji.Handler {
-		//isRootPathMissingTrailingSlash := regexp.MustCompile(`(?i)^/[a-z0-9]+$`)
-
+	var notFoundHandler = func(next goji.Handler) goji.Handler {
 		return goji.HandlerFunc(func(ctx context.Context, res http.ResponseWriter, req *http.Request) {
-			// if isRootPathMissingTrailingSlash.MatchString(req.URL.Path) {
-			// 	res.Header().Set("Location", req.URL.Path+"/")
-			// 	res.WriteHeader(http.StatusMovedPermanently)
-			// } else {
-			next.ServeHTTPC(ctx, res, req)
-			//}
+			if middleware.Handler(ctx) == nil {
+				response := struct {
+					Message string `json:"message"`
+				}{
+					Message: "Page Not Found",
+				}
+
+				res.WriteHeader(http.StatusNotFound)
+
+				data, jsonErr := json.MarshalIndent(response, "", "    ")
+				if jsonErr != nil {
+					panic(jsonErr)
+				}
+				res.Write(data)
+			} else {
+				next.ServeHTTPC(ctx, res, req)
+			}
 		})
-	})
+	}
+
+	router.UseC(notFoundHandler)
 
 	router.UseC(func(next goji.Handler) goji.Handler {
 		return goji.HandlerFunc(func(ctx context.Context, res http.ResponseWriter, req *http.Request) {
@@ -63,29 +76,29 @@ func main() {
 
 			response := ctx.Value("appContext").(*api.AppContext).Response
 
-			res.Header().Set("Content-Type", "application/json")
-
-			if response == nil {
-				response = struct {
-					Message string `json:"message"`
-				}{"Response message was missing."}
-				res.WriteHeader(http.StatusInternalServerError)
+			if response != nil {
+				data, jsonErr := json.MarshalIndent(response, "", "    ")
+				if jsonErr != nil {
+					panic(jsonErr)
+				}
+				res.Write(data)
 			}
-
-			data, jsonErr := json.MarshalIndent(response, "", "    ")
-			if jsonErr != nil {
-				panic(jsonErr)
-			}
-			res.Write(data)
 		})
 	})
 
 	router.HandleFuncC(pat.Get("/"), func(ctx context.Context, res http.ResponseWriter, req *http.Request) {
-		fmt.Fprintf(res, "Hello from GoBot Data server\n")
+		appContext := ctx.Value("appContext").(*api.AppContext)
+
+		appContext.Response = struct {
+			Message string `json:"message"`
+		}{
+			Message: "Hello from GoBot Data server",
+		}
 	})
 
 	// Account
 	account := goji.SubMux()
+	account.UseC(notFoundHandler)
 	router.HandleC(pat.New("/account/*"), account)
 
 	account.HandleFuncC(pat.Put("/login"), api.AccountLogin)
@@ -94,6 +107,7 @@ func main() {
 
 	// Users
 	users := goji.SubMux()
+	users.UseC(notFoundHandler)
 	router.HandleC(pat.New("/users/*"), users)
 	router.HandleC(pat.New("/users"), users)
 
@@ -105,6 +119,7 @@ func main() {
 
 	// TwitterAccounts
 	twitterAccounts := goji.SubMux()
+	twitterAccounts.UseC(notFoundHandler)
 	router.HandleC(pat.New("/twitterAccounts/*"), twitterAccounts)
 	router.HandleC(pat.New("/twitterAccounts"), twitterAccounts)
 
