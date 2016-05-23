@@ -35,16 +35,17 @@ type AppSettings struct {
 	BCryptWorkFactor int    `json:"bcryptWorkFactor"`
 }
 
+// MessageResponse represents a standard JSON message response
+type MessageResponse struct {
+	Message string `json:"message"`
+}
+
 const ok = "OK"
 const (
 	defaultRecordsPerPage = 20
 	maxPage               = 100
 	maxRecordsPerPage     = 100
 )
-
-type messageResponse struct {
-	Message string `json:"message"`
-}
 
 type pagedResponse struct {
 	Message        string `json:"message"`

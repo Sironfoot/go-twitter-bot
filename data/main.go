@@ -49,9 +49,7 @@ func main() {
 	var notFoundHandler = func(next goji.Handler) goji.Handler {
 		return goji.HandlerFunc(func(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 			if middleware.Handler(ctx) == nil {
-				response := struct {
-					Message string `json:"message"`
-				}{
+				response := api.MessageResponse{
 					Message: "Page Not Found",
 				}
 
@@ -89,9 +87,7 @@ func main() {
 	router.HandleFuncC(pat.Get("/"), func(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 		appContext := ctx.Value("appContext").(*api.AppContext)
 
-		appContext.Response = struct {
-			Message string `json:"message"`
-		}{
+		appContext.Response = api.MessageResponse{
 			Message: "Hello from GoBot Data server",
 		}
 	})

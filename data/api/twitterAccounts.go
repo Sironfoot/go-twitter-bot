@@ -56,7 +56,7 @@ func TwitterAccountsAll(ctx context.Context, res http.ResponseWriter, req *http.
 	defaults := getPagingDefaults(db.TwitterAccountsOrderByDateCreated, false, db.TwitterAccountsSortableColumns)
 	paging, err := ExtractAndValidatePagingInfo(req, defaults)
 	if err != nil {
-		appContext.Response = messageResponse{err.Error()}
+		appContext.Response = MessageResponse{err.Error()}
 		return
 	}
 
@@ -123,7 +123,7 @@ func TwitterAccountGet(ctx context.Context, res http.ResponseWriter, req *http.R
 	account, err := db.TwitterAccountFromID(twitterAccountID)
 	if err == db.ErrEntityNotFound {
 		res.WriteHeader(http.StatusNotFound)
-		appContext.Response = messageResponse{
+		appContext.Response = MessageResponse{
 			Message: fmt.Sprintf("TwitterAccount not found on ID: %s", twitterAccountID),
 		}
 		return
@@ -132,7 +132,7 @@ func TwitterAccountGet(ctx context.Context, res http.ResponseWriter, req *http.R
 	}
 
 	model := struct {
-		messageResponse
+		MessageResponse
 		TwitterAccount twitterAccount `json:"twitterAccount"`
 	}{}
 
@@ -162,7 +162,7 @@ func TwitterAccountGetWithTweets(ctx context.Context, res http.ResponseWriter, r
 	account, err := db.TwitterAccountFromID(twitterAccountID)
 	if err == db.ErrEntityNotFound {
 		res.WriteHeader(http.StatusNotFound)
-		appContext.Response = messageResponse{
+		appContext.Response = MessageResponse{
 			Message: fmt.Sprintf("TwitterAccount not found on ID: %s", twitterAccountID),
 		}
 		return
@@ -171,7 +171,7 @@ func TwitterAccountGetWithTweets(ctx context.Context, res http.ResponseWriter, r
 	}
 
 	model := struct {
-		messageResponse
+		MessageResponse
 		TwitterAccount twitterAccountWithTweets `json:"twitterAccount"`
 	}{}
 
@@ -197,7 +197,7 @@ func TwitterAccountGetWithTweets(ctx context.Context, res http.ResponseWriter, r
 	defaults := getPagingDefaults(db.TweetsOrderByDateCreated, false, db.TweetsSortableColumns)
 	paging, err := ExtractAndValidatePagingInfo(req, defaults)
 	if err != nil {
-		appContext.Response = messageResponse{err.Error()}
+		appContext.Response = MessageResponse{err.Error()}
 		return
 	}
 
@@ -242,7 +242,7 @@ func TwitterAccountTweetCreate(ctx context.Context, res http.ResponseWriter, req
 	account, err := db.TwitterAccountFromID(twitterAccountID)
 	if err == db.ErrEntityNotFound {
 		res.WriteHeader(http.StatusNotFound)
-		appContext.Response = messageResponse{
+		appContext.Response = MessageResponse{
 			Message: fmt.Sprintf("TwitterAccount not found on ID: %s", twitterAccountID),
 		}
 		return
@@ -303,7 +303,7 @@ func TwitterAccountTweetUpdate(ctx context.Context, res http.ResponseWriter, req
 	account, err := db.TwitterAccountFromID(twitterAccountID)
 	if err == db.ErrEntityNotFound {
 		res.WriteHeader(http.StatusNotFound)
-		appContext.Response = messageResponse{
+		appContext.Response = MessageResponse{
 			Message: fmt.Sprintf("TwitterAccount not found on ID: %s", twitterAccountID),
 		}
 		return
@@ -315,7 +315,7 @@ func TwitterAccountTweetUpdate(ctx context.Context, res http.ResponseWriter, req
 	tweet, err := account.GetTweetFromID(tweetID)
 	if err == db.ErrEntityNotFound {
 		res.WriteHeader(http.StatusNotFound)
-		appContext.Response = messageResponse{
+		appContext.Response = MessageResponse{
 			Message: fmt.Sprintf("Tweet not found on ID: %s", tweetID),
 		}
 		return
@@ -352,7 +352,7 @@ func TwitterAccountTweetUpdate(ctx context.Context, res http.ResponseWriter, req
 		panic(err)
 	}
 
-	appContext.Response = messageResponse{
+	appContext.Response = MessageResponse{
 		Message: ok,
 	}
 }
@@ -365,7 +365,7 @@ func TwitterAccountTweetDelete(ctx context.Context, res http.ResponseWriter, req
 	account, err := db.TwitterAccountFromID(twitterAccountID)
 	if err == db.ErrEntityNotFound {
 		res.WriteHeader(http.StatusNotFound)
-		appContext.Response = messageResponse{
+		appContext.Response = MessageResponse{
 			Message: fmt.Sprintf("TwitterAccount not found on ID: %s", twitterAccountID),
 		}
 		return
@@ -377,7 +377,7 @@ func TwitterAccountTweetDelete(ctx context.Context, res http.ResponseWriter, req
 	tweet, err := account.GetTweetFromID(tweetID)
 	if err == db.ErrEntityNotFound {
 		res.WriteHeader(http.StatusNotFound)
-		appContext.Response = messageResponse{
+		appContext.Response = MessageResponse{
 			Message: fmt.Sprintf("Tweet not found on ID: %s", tweetID),
 		}
 		return
@@ -390,7 +390,7 @@ func TwitterAccountTweetDelete(ctx context.Context, res http.ResponseWriter, req
 		panic(err)
 	}
 
-	appContext.Response = messageResponse{
+	appContext.Response = MessageResponse{
 		Message: ok,
 	}
 }

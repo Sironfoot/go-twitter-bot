@@ -30,7 +30,7 @@ func UsersAll(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 	defaults := getPagingDefaults(db.UsersOrderByDateCreated, false, db.UsersSortableColumns)
 	paging, err := ExtractAndValidatePagingInfo(req, defaults)
 	if err != nil {
-		appContext.Response = messageResponse{err.Error()}
+		appContext.Response = MessageResponse{err.Error()}
 		return
 	}
 
@@ -72,7 +72,7 @@ func UserGet(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 
 	userDB, err := db.UserFromID(userID)
 	if err == db.ErrEntityNotFound {
-		appContext.Response = messageResponse{
+		appContext.Response = MessageResponse{
 			Message: fmt.Sprintf("User not found on ID: %s", userID),
 		}
 		return
@@ -81,7 +81,7 @@ func UserGet(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 	}
 
 	model := struct {
-		messageResponse
+		MessageResponse
 		User user `json:"user"`
 	}{}
 
@@ -173,7 +173,7 @@ func UserUpdate(ctx context.Context, res http.ResponseWriter, req *http.Request)
 
 	if err == db.ErrEntityNotFound {
 		res.WriteHeader(http.StatusNotFound)
-		appContext.Response = messageResponse{
+		appContext.Response = MessageResponse{
 			Message: fmt.Sprintf("User not found on ID: %s", userID),
 		}
 		return
@@ -212,7 +212,7 @@ func UserUpdate(ctx context.Context, res http.ResponseWriter, req *http.Request)
 		panic(err)
 	}
 
-	appContext.Response = messageResponse{
+	appContext.Response = MessageResponse{
 		Message: ok,
 	}
 }
@@ -229,7 +229,7 @@ func UserDelete(ctx context.Context, res http.ResponseWriter, req *http.Request)
 
 	if err == db.ErrEntityNotFound {
 		res.WriteHeader(http.StatusNotFound)
-		appContext.Response = messageResponse{
+		appContext.Response = MessageResponse{
 			Message: fmt.Sprintf("User not found on ID: %s", userID),
 		}
 		return
@@ -240,7 +240,7 @@ func UserDelete(ctx context.Context, res http.ResponseWriter, req *http.Request)
 		panic(err)
 	}
 
-	appContext.Response = messageResponse{
+	appContext.Response = MessageResponse{
 		Message: ok,
 	}
 }

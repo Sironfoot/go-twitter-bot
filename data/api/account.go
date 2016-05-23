@@ -70,8 +70,9 @@ func AccountLogin(ctx context.Context, res http.ResponseWriter, req *http.Reques
 	}
 
 	// check password
-	if err := bcrypt.CompareHashAndPassword([]byte(user.HashedPassword), []byte(login.Password)); err != nil {
-		if err == bcrypt.ErrMismatchedHashAndPassword || err == bcrypt.ErrHashTooShort {
+	errHashCompare := bcrypt.CompareHashAndPassword([]byte(user.HashedPassword), []byte(login.Password))
+	if errHashCompare != nil {
+		if errHashCompare == bcrypt.ErrMismatchedHashAndPassword || errHashCompare == bcrypt.ErrHashTooShort {
 			res.WriteHeader(http.StatusForbidden)
 
 			var validationErrors []models.ValidationError
@@ -88,7 +89,7 @@ func AccountLogin(ctx context.Context, res http.ResponseWriter, req *http.Reques
 			return
 		}
 
-		panic(err)
+		panic(errHashCompare)
 	}
 
 	randomBytes := make([]byte, 32)
