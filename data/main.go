@@ -36,6 +36,31 @@ func main() {
 
 	router.UseC(func(next goji.Handler) goji.Handler {
 		return goji.HandlerFunc(func(ctx context.Context, res http.ResponseWriter, req *http.Request) {
+			defer func() {
+				r := recover()
+				if r != nil {
+					log.Println(r)
+
+					response := api.MessageResponse{
+						Message: "Internal Server Error",
+					}
+
+					res.Header().Set("Content-Type", "application/json; charset=utf-8")
+					res.WriteHeader(http.StatusInternalServerError)
+
+					data, jsonErr := json.MarshalIndent(response, "", "    ")
+					if jsonErr == nil {
+						res.Write(data)
+					}
+				}
+			}()
+
+			next.ServeHTTPC(ctx, res, req)
+		})
+	})
+
+	router.UseC(func(next goji.Handler) goji.Handler {
+		return goji.HandlerFunc(func(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 			res.Header().Set("Content-Type", "application/json; charset=utf-8")
 
 			appContext := api.AppContext{}
