@@ -105,6 +105,11 @@ func AccountLogin(ctx context.Context, res http.ResponseWriter, req *http.Reques
 		Valid:  true,
 	}
 
+	err = user.Save()
+	if err != nil {
+		panic(err)
+	}
+
 	block, err := aes.NewCipher([]byte(appContext.Settings.AppSettings.EncryptionKey))
 	if err != nil {
 		panic(err)

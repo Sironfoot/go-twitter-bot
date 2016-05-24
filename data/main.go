@@ -2,9 +2,11 @@ package main
 
 import (
 	"crypto/aes"
+	"crypto/cipher"
 	"encoding/base64"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -88,27 +90,32 @@ func main() {
 				return
 			}
 
-			encryptedBytes, err := base64.StdEncoding.DecodeString(accessToken)
+			encryptedToken, err := base64.StdEncoding.DecodeString(accessToken)
 			if err != nil {
 				// not a valid Base64 string, force user to log in again
-				res.Header().Del("accessToken")
 				return
 			}
 
 			appContext := ctx.Value("appContext").(*api.AppContext)
-			cipher, err := aes.NewCipher([]byte(appContext.Settings.AppSettings.EncryptionKey))
+			block, err := aes.NewCipher([]byte(appContext.Settings.AppSettings.EncryptionKey))
 			if err != nil {
 				panic(err)
 			}
 
-			var decryptedTokenBytes []byte
-			cipher.Decrypt(decryptedTokenBytes, encryptedBytes)
+			if len(encryptedToken) < aes.BlockSize {
+				panic(fmt.Errorf("encryptedToken too short"))
+			}
 
-			token := string(decryptedTokenBytes)
+			iv := encryptedToken[:aes.BlockSize]
+			encryptedToken = encryptedToken[aes.BlockSize:]
+
+			cfb := cipher.NewCFBDecrypter(block, iv)
+			cfb.XORKeyStream(encryptedToken, encryptedToken)
+
+			token := string(encryptedToken)
 			tokenParts := strings.Split(token, "_")
 			if len(tokenParts) != 2 {
 				// not a valid format (UserID_AuthToken), force user to log in again
-				res.Header().Del("accessToken")
 				return
 			}
 
