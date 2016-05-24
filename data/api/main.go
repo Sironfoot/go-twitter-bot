@@ -48,6 +48,8 @@ const (
 	maxRecordsPerPage     = 100
 )
 
+const maxRequestLength = 1048576
+
 type pagedResponse struct {
 	Message        string `json:"message"`
 	Page           int    `json:"page"`

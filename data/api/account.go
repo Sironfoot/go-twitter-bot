@@ -4,9 +4,11 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 
 	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rand"
 
 	"encoding/base64"
@@ -17,21 +19,21 @@ import (
 	"golang.org/x/net/context"
 )
 
-type login struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
-
 // AccountLogin = POST/PUT: /account/login
 func AccountLogin(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 	appContext := ctx.Value("appContext").(*AppContext)
 	var login models.Login
 
-	err := json.NewDecoder(req.Body).Decode(&login)
+	defer req.Body.Close()
+
+	err := json.NewDecoder(io.LimitReader(req.Body, maxRequestLength)).Decode(&login)
 	if err != nil {
-		panic(err)
+		res.WriteHeader(http.StatusBadRequest)
+		appContext.Response = MessageResponse{
+			Message: "JSON request body was in invalid format",
+		}
+		return
 	}
-	req.Body.Close()
 
 	login.Sanitise()
 	validationErrors, err := login.Validate()
@@ -103,16 +105,24 @@ func AccountLogin(ctx context.Context, res http.ResponseWriter, req *http.Reques
 		Valid:  true,
 	}
 
-	cypher, err := aes.NewCipher([]byte(appContext.Settings.AppSettings.EncryptionKey))
+	block, err := aes.NewCipher([]byte(appContext.Settings.AppSettings.EncryptionKey))
 	if err != nil {
 		panic(err)
 	}
 
-	plaintextTokenBytes := []byte(user.ID + "_" + user.AuthToken.String)
-	var encryptedTokenBytes []byte
+	plaintextToken := []byte(user.ID + "_" + user.AuthToken.String)
+	encryptedToken := make([]byte, aes.BlockSize+len(plaintextToken))
 
-	cypher.Encrypt(encryptedTokenBytes, plaintextTokenBytes)
-	accessToken := base64.StdEncoding.EncodeToString(encryptedTokenBytes)
+	// iv = initialization vector
+	iv := encryptedToken[:aes.BlockSize]
+	_, err = rand.Read(iv)
+	if err != nil {
+		panic(err)
+	}
+
+	cfb := cipher.NewCFBEncrypter(block, iv)
+	cfb.XORKeyStream(encryptedToken[aes.BlockSize:], plaintextToken)
+	accessToken := base64.StdEncoding.EncodeToString(encryptedToken)
 
 	appContext.Response = struct {
 		Message     string `json:"message"`
