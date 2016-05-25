@@ -71,6 +71,13 @@ func TwitterAccountsAll(ctx context.Context, res http.ResponseWriter, req *http.
 		query.HasTweetsToBePostedSince = dateTime
 	}
 
+	filterUserID := qs.Get("userID")
+	// filter TwitterAccounts to user's own if not an admin
+	if !appContext.AuthUser.IsAdmin {
+		filterUserID = appContext.AuthUser.ID
+	}
+	query.UserID = filterUserID // TODO: implement UserID support in data access code
+
 	twitterAccounts, totalRecords, err := db.TwitterAccountsAll(query)
 	if err != nil {
 		panic(err)
@@ -131,6 +138,24 @@ func TwitterAccountGet(ctx context.Context, res http.ResponseWriter, req *http.R
 		panic(err)
 	}
 
+	// non-admins can only view their own TwitterAccounts
+	if !appContext.AuthUser.IsAdmin && appContext.AuthUser.ID != account.UserID {
+		appContext.Response = MessageResponse{
+			Message: "This resource is only available to users with administrator rights.",
+		}
+		res.WriteHeader(http.StatusForbidden)
+		return
+	}
+
+	// non-admins can only view their own TwitterAccounts
+	if !appContext.AuthUser.IsAdmin && account.UserID != appContext.AuthUser.ID {
+		appContext.Response = MessageResponse{
+			Message: "This resource is only available to users with administrator rights.",
+		}
+		res.WriteHeader(http.StatusForbidden)
+		return
+	}
+
 	model := struct {
 		MessageResponse
 		TwitterAccount twitterAccount `json:"twitterAccount"`
@@ -168,6 +193,15 @@ func TwitterAccountGetWithTweets(ctx context.Context, res http.ResponseWriter, r
 		return
 	} else if err != nil {
 		panic(err)
+	}
+
+	// non-admins can only view their own TwitterAccounts
+	if !appContext.AuthUser.IsAdmin && appContext.AuthUser.ID != account.UserID {
+		appContext.Response = MessageResponse{
+			Message: "This resource is only available to users with administrator rights.",
+		}
+		res.WriteHeader(http.StatusForbidden)
+		return
 	}
 
 	model := struct {
@@ -250,6 +284,15 @@ func TwitterAccountTweetCreate(ctx context.Context, res http.ResponseWriter, req
 		panic(err)
 	}
 
+	// non-admins can only create Tweets for their own TwitterAccounts
+	if !appContext.AuthUser.IsAdmin && appContext.AuthUser.ID != account.UserID {
+		appContext.Response = MessageResponse{
+			Message: "This resource is only available to users with administrator rights.",
+		}
+		res.WriteHeader(http.StatusForbidden)
+		return
+	}
+
 	var newTweet models.Tweet
 
 	err = json.NewDecoder(req.Body).Decode(&newTweet)
@@ -309,6 +352,15 @@ func TwitterAccountTweetUpdate(ctx context.Context, res http.ResponseWriter, req
 		return
 	} else if err != nil {
 		panic(err)
+	}
+
+	// non-admins can only edit their own Tweets
+	if !appContext.AuthUser.IsAdmin && appContext.AuthUser.ID != account.UserID {
+		appContext.Response = MessageResponse{
+			Message: "This resource is only available to users with administrator rights.",
+		}
+		res.WriteHeader(http.StatusForbidden)
+		return
 	}
 
 	tweetID := pat.Param(ctx, "tweetID")
@@ -371,6 +423,15 @@ func TwitterAccountTweetDelete(ctx context.Context, res http.ResponseWriter, req
 		return
 	} else if err != nil {
 		panic(err)
+	}
+
+	// non-admins can only delete their own Tweets
+	if !appContext.AuthUser.IsAdmin && appContext.AuthUser.ID != account.UserID {
+		appContext.Response = MessageResponse{
+			Message: "This resource is only available to users with administrator rights.",
+		}
+		res.WriteHeader(http.StatusForbidden)
+		return
 	}
 
 	tweetID := pat.Param(ctx, "tweetID")

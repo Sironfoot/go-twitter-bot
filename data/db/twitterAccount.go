@@ -97,6 +97,7 @@ type TwitterAccountList struct {
 type TwitterAccountQuery struct {
 	PagingInfo
 	ContainsUsername         string
+	UserID                   string
 	HasTweetsToBePostedSince time.Time
 }
 

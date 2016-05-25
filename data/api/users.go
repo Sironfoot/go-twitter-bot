@@ -27,6 +27,15 @@ type user struct {
 func UsersAll(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 	appContext := ctx.Value("appContext").(*AppContext)
 
+	// admins only
+	if !appContext.AuthUser.IsAdmin {
+		appContext.Response = MessageResponse{
+			Message: "This resource is only available to users with administrator rights.",
+		}
+		res.WriteHeader(http.StatusForbidden)
+		return
+	}
+
 	defaults := getPagingDefaults(db.UsersOrderByDateCreated, false, db.UsersSortableColumns)
 	paging, err := ExtractAndValidatePagingInfo(req, defaults)
 	if err != nil {
@@ -70,6 +79,15 @@ func UserGet(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 	appContext := ctx.Value("appContext").(*AppContext)
 	userID := pat.Param(ctx, "userID")
 
+	// non-admins can only view their own details
+	if !appContext.AuthUser.IsAdmin && appContext.AuthUser.ID != userID {
+		appContext.Response = MessageResponse{
+			Message: "This resource is only available to users with administrator rights.",
+		}
+		res.WriteHeader(http.StatusForbidden)
+		return
+	}
+
 	userDB, err := db.UserFromID(userID)
 	if err == db.ErrEntityNotFound {
 		appContext.Response = MessageResponse{
@@ -101,6 +119,16 @@ func UserGet(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 // UserCreate = POST: /users
 func UserCreate(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 	appContext := ctx.Value("appContext").(*AppContext)
+
+	// admins only
+	if !appContext.AuthUser.IsAdmin {
+		appContext.Response = MessageResponse{
+			Message: "This resource is only available to users with administrator rights.",
+		}
+		res.WriteHeader(http.StatusForbidden)
+		return
+	}
+
 	var newUser models.User
 
 	err := json.NewDecoder(req.Body).Decode(&newUser)
@@ -156,6 +184,17 @@ func UserCreate(ctx context.Context, res http.ResponseWriter, req *http.Request)
 // UserUpdate = PUT: /users/:userID
 func UserUpdate(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 	appContext := ctx.Value("appContext").(*AppContext)
+	userID := pat.Param(ctx, "userID")
+
+	// non-admins can only edit their own details
+	if !appContext.AuthUser.IsAdmin && appContext.AuthUser.ID != userID {
+		appContext.Response = MessageResponse{
+			Message: "This resource is only available to users with administrator rights.",
+		}
+		res.WriteHeader(http.StatusForbidden)
+		return
+	}
+
 	var updateUser models.User
 
 	err := json.NewDecoder(req.Body).Decode(&updateUser)
@@ -163,8 +202,6 @@ func UserUpdate(ctx context.Context, res http.ResponseWriter, req *http.Request)
 		panic(err)
 	}
 	req.Body.Close()
-
-	userID := pat.Param(ctx, "userID")
 
 	user, err := db.UserFromID(userID)
 	if err != nil && err != db.ErrEntityNotFound {
@@ -195,7 +232,10 @@ func UserUpdate(ctx context.Context, res http.ResponseWriter, req *http.Request)
 	}
 
 	user.Email = updateUser.Email
-	user.IsAdmin = updateUser.IsAdmin
+
+	if appContext.AuthUser.IsAdmin {
+		user.IsAdmin = updateUser.IsAdmin
+	}
 
 	if updateUser.Password != "" {
 		bcryptWorkFactor := appContext.Settings.AppSettings.BCryptWorkFactor
@@ -221,6 +261,15 @@ func UserUpdate(ctx context.Context, res http.ResponseWriter, req *http.Request)
 func UserDelete(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 	appContext := ctx.Value("appContext").(*AppContext)
 	userID := pat.Param(ctx, "userID")
+
+	// non-admins can only delete their own account
+	if !appContext.AuthUser.IsAdmin && appContext.AuthUser.ID != userID {
+		appContext.Response = MessageResponse{
+			Message: "This resource is only available to users with administrator rights.",
+		}
+		res.WriteHeader(http.StatusForbidden)
+		return
+	}
 
 	user, err := db.UserFromID(userID)
 	if err != nil && err != db.ErrEntityNotFound {
