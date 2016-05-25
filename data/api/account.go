@@ -19,7 +19,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-// AccountLogin = POST/PUT: /account/login
+// AccountLogin = PUT: /account/login
 func AccountLogin(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 	appContext := ctx.Value("appContext").(*AppContext)
 	var login models.Login
@@ -138,9 +138,26 @@ func AccountLogin(ctx context.Context, res http.ResponseWriter, req *http.Reques
 	}
 }
 
-// AccountLogout = POST/PUT: /account/logout
+// AccountLogout = PUT: /account/logout
 func AccountLogout(ctx context.Context, res http.ResponseWriter, req *http.Request) {
-	res.WriteHeader(http.StatusNotImplemented)
+	appContext := ctx.Value("appContext").(*AppContext)
+
+	if appContext.AuthUser != nil {
+		authUser := appContext.AuthUser
+
+		authUser.AuthToken = sql.NullString{
+			Valid: false,
+		}
+
+		err := authUser.Save()
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	appContext.Response = MessageResponse{
+		Message: ok,
+	}
 }
 
 // AccountSignup = POST/PUT: /account/signup
