@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -131,11 +132,15 @@ func UserCreate(ctx context.Context, res http.ResponseWriter, req *http.Request)
 
 	var newUser models.User
 
-	err := json.NewDecoder(req.Body).Decode(&newUser)
+	defer req.Body.Close()
+	err := json.NewDecoder(io.LimitReader(req.Body, maxRequestLength)).Decode(&newUser)
 	if err != nil {
-		panic(err)
+		res.WriteHeader(http.StatusBadRequest)
+		appContext.Response = MessageResponse{
+			Message: "JSON request body was not in a valid format",
+		}
+		return
 	}
-	req.Body.Close()
 
 	newUser.Sanitise()
 	validationErrors, err := newUser.ValidateCreate()
@@ -197,9 +202,13 @@ func UserUpdate(ctx context.Context, res http.ResponseWriter, req *http.Request)
 
 	var updateUser models.User
 
-	err := json.NewDecoder(req.Body).Decode(&updateUser)
+	err := json.NewDecoder(io.LimitReader(req.Body, maxRequestLength)).Decode(&updateUser)
 	if err != nil {
-		panic(err)
+		res.WriteHeader(http.StatusBadRequest)
+		appContext.Response = MessageResponse{
+			Message: "JSON request body was not in a valid format",
+		}
+		return
 	}
 	req.Body.Close()
 
@@ -231,6 +240,7 @@ func UserUpdate(ctx context.Context, res http.ResponseWriter, req *http.Request)
 		return
 	}
 
+	user.Name = updateUser.Name
 	user.Email = updateUser.Email
 
 	if appContext.AuthUser.IsAdmin {

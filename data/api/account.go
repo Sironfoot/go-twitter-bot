@@ -25,12 +25,11 @@ func AccountLogin(ctx context.Context, res http.ResponseWriter, req *http.Reques
 	var login models.Login
 
 	defer req.Body.Close()
-
 	err := json.NewDecoder(io.LimitReader(req.Body, maxRequestLength)).Decode(&login)
 	if err != nil {
 		res.WriteHeader(http.StatusBadRequest)
 		appContext.Response = MessageResponse{
-			Message: "JSON request body was in invalid format",
+			Message: "JSON request body was not in a valid format",
 		}
 		return
 	}
