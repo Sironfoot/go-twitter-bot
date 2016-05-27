@@ -41,6 +41,37 @@ func GetColumnListString(entity Entity, alias string) string {
 	return strings.Join(GetColumnList(entity, alias), ", ")
 }
 
+// GetFullColumnList returns a slice of all the column names for a DB
+// Entity struct (as specified by their tags), including the PK ID
+func GetFullColumnList(entity Entity, alias string) []string {
+	var columnList []string
+
+	val := reflect.ValueOf(entity).Elem()
+	entityType := val.Type()
+
+	for i := 0; i < val.NumField(); i++ {
+		fieldInfo := entityType.Field(i)
+		tag := fieldInfo.Tag
+		columnName := strings.TrimSpace(tag.Get("db"))
+
+		if columnName != "" {
+			if alias != "" {
+				columnName = alias + "." + columnName
+			}
+
+			columnList = append(columnList, columnName)
+		}
+	}
+
+	return columnList
+}
+
+// GetFullColumnListString returns a comma separated string of all the column
+// names for a DB Entity struct (as specified by thier tags), including the PK ID
+func GetFullColumnListString(entity Entity, alias string) string {
+	return strings.Join(GetFullColumnList(entity, alias), ", ")
+}
+
 // GenerateInsertStatement generates an SQL command for inserting a record into the database
 func GenerateInsertStatement(entity Entity) string {
 	metaData := entity.MetaData()

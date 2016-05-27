@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"time"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/sironfoot/go-twitter-bot/lib/sqlboiler"
 )
 
@@ -72,7 +73,7 @@ var UserFromID = func(id string) (User, error) {
 var UserFromEmail = func(email string) (User, error) {
 	var user User
 
-	cmd := `SELECT id, ` + sqlboiler.GetColumnListString(&user, "") + `
+	cmd := `SELECT ` + sqlboiler.GetFullColumnListString(&user, "") + `
 			FROM users
 			WHERE email = $1`
 
@@ -104,12 +105,18 @@ var UsersAll = func(query PagingInfo) ([]User, int, error) {
 	var users []User
 	recordCount := 0
 
-	cmd := "SELECT id, " + sqlboiler.GetColumnListString(&User{}, "") + " " +
-		"FROM users " +
-		"ORDER BY $1 " +
-		"LIMIT $2 OFFSET $3"
+	cmd, _, err := sq.
+		Select(sqlboiler.GetFullColumnList(&User{}, "")...).
+		From("users").
+		OrderBy(query.BuildOrderBy()).
+		Limit(uint64(query.Limit())).Offset(uint64(query.Offset())).
+		ToSql()
 
-	rows, err := dbx.Queryx(cmd, query.BuildOrderBy(), query.Limit(), query.Offset())
+	if err != nil {
+		return nil, recordCount, err
+	}
+
+	rows, err := dbx.Queryx(cmd)
 	if err != nil {
 		return nil, recordCount, err
 	}

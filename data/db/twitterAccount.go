@@ -2,8 +2,10 @@ package db
 
 import (
 	"database/sql"
+	"fmt"
 	"time"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/sironfoot/go-twitter-bot/lib/sqlboiler"
 )
 
@@ -61,7 +63,7 @@ var TwitterAccountFromID = func(id string) (TwitterAccountList, error) {
 		return account, ErrEntityNotFound
 	}
 
-	cmd := `SELECT ta.id, ` + sqlboiler.GetColumnListString(&TwitterAccount{}, "ta") + `, COUNT(t.id) AS num_tweets
+	cmd := `SELECT ` + sqlboiler.GetFullColumnListString(&TwitterAccount{}, "ta") + `, COUNT(t.id) AS num_tweets
 			FROM twitter_accounts ta
 				LEFT OUTER JOIN tweets t ON ta.id = t.twitter_account_id
 			WHERE ta.id = $1
@@ -106,44 +108,38 @@ var TwitterAccountsAll = func(query TwitterAccountQuery) ([]TwitterAccountList, 
 	var accounts []TwitterAccountList
 	recordCount := 0
 
-	var queryParams []interface{}
-	queryParams = append(queryParams, query.BuildOrderBy())
-	queryParams = append(queryParams, query.Limit())
-	queryParams = append(queryParams, query.Offset())
+	cmd := sq.
+		Select(sqlboiler.GetFullColumnList(&TwitterAccount{}, "ta")...).Column("COUNT(t.id) AS num_tweets").
+		From("twitter_accounts ta").
+		LeftJoin("tweets t ON ta.id = t.twitter_account_id")
 
-	cmd := `SELECT ta.id, ` + sqlboiler.GetColumnListString(&TwitterAccount{}, "ta") + `, COUNT(t.id) AS num_tweets
-		FROM twitter_accounts ta
-		LEFT OUTER JOIN tweets t ON ta.id = t.twitter_account_id`
-
-	where := ""
-	var whereParams []interface{}
-
-	if query.ContainsUsername != "" && !query.HasTweetsToBePostedSince.IsZero() {
-		where += ` WHERE ta.username LIKE $4
-				     AND t.is_posted = false
-					 AND t.post_on > $5`
-
-		whereParams = append(whereParams, "%"+query.ContainsUsername+"%")
-		whereParams = append(whereParams, query.HasTweetsToBePostedSince)
-	} else if query.ContainsUsername != "" {
-		where += ` WHERE ta.username LIKE $4`
-
-		whereParams = append(whereParams, "%"+query.ContainsUsername+"%")
-	} else if !query.HasTweetsToBePostedSince.IsZero() {
-		where += ` WHERE t.is_posted = false
-				     AND t.post_on > $4`
-
-		whereParams = append(whereParams, query.HasTweetsToBePostedSince)
+	if query.ContainsUsername != "" {
+		cmd = cmd.Where("ta.username LIKE ?", query.ContainsUsername)
 	}
 
-	cmd += where
-	queryParams = append(queryParams, whereParams...)
+	if !query.HasTweetsToBePostedSince.IsZero() {
+		cmd = cmd.Where("t.is_posted = ? AND t.post_on > ?", false, query.HasTweetsToBePostedSince)
+	}
 
-	cmd += ` GROUP BY ta.id
-		ORDER BY $1
-		LIMIT $2 OFFSET $3`
+	if query.UserID != "" {
+		cmd = cmd.Where("ta.user_id = ?", query.UserID)
+	}
 
-	rows, err := dbx.Queryx(cmd, queryParams...)
+	cmd = cmd.
+		GroupBy("ta.id").
+		OrderBy(query.BuildOrderBy()).
+		Limit(uint64(query.Limit())).
+		Offset(uint64(query.Offset()))
+
+	sqlString, args, err := cmd.PlaceholderFormat(sq.Dollar).ToSql()
+	if err != nil {
+		return nil, recordCount, err
+	}
+
+	fmt.Println(sqlString)
+	fmt.Println(args)
+
+	rows, err := dbx.Queryx(sqlString, args...)
 	if err != nil {
 		return nil, recordCount, err
 	}
@@ -161,26 +157,33 @@ var TwitterAccountsAll = func(query TwitterAccountQuery) ([]TwitterAccountList, 
 		accounts = append(accounts, account)
 	}
 
-	if query.ContainsUsername == "" && query.HasTweetsToBePostedSince.IsZero() {
-		err = dbx.Get(&recordCount, "SELECT COUNT(*) FROM twitter_accounts")
-	} else {
-		countCmd := `SELECT COUNT(DISTINCT ta.id)
-					 FROM twitter_accounts ta
-					 LEFT OUTER JOIN tweets t ON ta.id = t.twitter_account_id`
+	countCmd := sq.
+		Select("COUNT(DISTINCT ta.id)").
+		From("twitter_accounts ta")
 
-		if query.ContainsUsername != "" && !query.HasTweetsToBePostedSince.IsZero() {
-			countCmd += ` WHERE ta.username LIKE $1
-					   		AND t.is_posted = false
-			 	   	   		AND t.post_on > $2`
-		} else if query.ContainsUsername != "" {
-			countCmd += ` WHERE ta.username LIKE $1`
-		} else if !query.HasTweetsToBePostedSince.IsZero() {
-			countCmd += ` WHERE t.is_posted = false
-			 				AND t.post_on > $1`
+	if query.ContainsUsername != "" || !query.HasTweetsToBePostedSince.IsZero() {
+		countCmd = countCmd.
+			LeftJoin("tweets t ON ta.id = t.twitter_account_id")
+
+		if query.ContainsUsername != "" {
+			countCmd = countCmd.Where("ta.username LIKE ?", query.ContainsUsername)
 		}
 
-		err = dbx.Get(&recordCount, countCmd, whereParams...)
+		if !query.HasTweetsToBePostedSince.IsZero() {
+			countCmd = countCmd.Where("t.is_posted = ? AND t.post_on > ?", false, query.HasTweetsToBePostedSince)
+		}
+
+		if query.UserID != "" {
+			countCmd = countCmd.Where("ta.user_id = ?", query.UserID)
+		}
 	}
+
+	countSQL, countArgs, err := countCmd.PlaceholderFormat(sq.Dollar).ToSql()
+	if err != nil {
+		return nil, recordCount, err
+	}
+
+	err = dbx.Get(&recordCount, countSQL, countArgs...)
 
 	return accounts, recordCount, err
 }
