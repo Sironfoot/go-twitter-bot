@@ -1,7 +1,6 @@
 package db
 
 import (
-	"database/sql"
 	"errors"
 	"regexp"
 
@@ -9,34 +8,22 @@ import (
 	_ "github.com/lib/pq" // initialise postgresql DB provider
 )
 
-var db *sql.DB
 var dbx *sqlx.DB
 
 // InitDB initialises the database
 func InitDB(connectionString string) error {
 	var err error
 
-	db, err = sql.Open("postgres", connectionString)
+	dbx, err = sqlx.Open("postgres", connectionString)
 	if err != nil {
 		return err
 	}
 
-	err = db.Ping()
-	if err != nil {
-		return err
-	}
-
-	dbx = sqlx.NewDb(db, "postgres")
-	return nil
+	return dbx.Ping()
 }
 
 // CloseDB closes the database
 func CloseDB() error {
-	err := db.Close()
-	if err != nil {
-		return err
-	}
-
 	return dbx.Close()
 }
 

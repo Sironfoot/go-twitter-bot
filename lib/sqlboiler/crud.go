@@ -8,7 +8,7 @@ import (
 )
 
 // EntityGetByID returns an entity by its ID
-func EntityGetByID(entity Entity, id interface{}, db *sql.DB) error {
+func EntityGetByID(entity Entity, id interface{}, db DataAccessor) error {
 	metaData := entity.MetaData()
 	selectSQL := GenerateGetByIDStatement(entity)
 
@@ -62,7 +62,7 @@ func EntityGetByID(entity Entity, id interface{}, db *sql.DB) error {
 }
 
 // EntitySave saves (either INSERTs or UPDATEs) an entity to the database
-func EntitySave(entity Entity, db *sql.DB) error {
+func EntitySave(entity Entity, db DataAccessor) error {
 	metaData := entity.MetaData()
 
 	var fields []interface{}
@@ -138,7 +138,7 @@ func EntitySave(entity Entity, db *sql.DB) error {
 }
 
 // EntityDelete deletes an entity from the databse
-func EntityDelete(entity Entity, db *sql.DB) error {
+func EntityDelete(entity Entity, db DataAccessor) error {
 	metaData := entity.MetaData()
 
 	var pkFieldValue reflect.Value

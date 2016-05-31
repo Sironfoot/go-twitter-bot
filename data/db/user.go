@@ -36,7 +36,7 @@ func (user *User) MetaData() sqlboiler.EntityMetaData {
 
 // UserSave saves the User struct to the database.
 var UserSave = func(user *User) error {
-	return sqlboiler.EntitySave(user, db)
+	return sqlboiler.EntitySave(user, dbx)
 }
 
 // Save saves the User struct to the database.
@@ -46,7 +46,7 @@ func (user *User) Save() error {
 
 // UserDelete deletes the User from the database
 var UserDelete = func(user *User) error {
-	return sqlboiler.EntityDelete(user, db)
+	return sqlboiler.EntityDelete(user, dbx)
 }
 
 // Delete deletes the User from the database
@@ -62,7 +62,7 @@ var UserFromID = func(id string) (User, error) {
 		return user, ErrEntityNotFound
 	}
 
-	err := sqlboiler.EntityGetByID(&user, id, db)
+	err := sqlboiler.EntityGetByID(&user, id, dbx)
 	if err == sqlboiler.ErrEntityNotFound {
 		return user, ErrEntityNotFound
 	}

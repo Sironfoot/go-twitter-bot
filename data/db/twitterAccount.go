@@ -2,7 +2,6 @@ package db
 
 import (
 	"database/sql"
-	"fmt"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
@@ -37,7 +36,7 @@ func (account *TwitterAccount) MetaData() sqlboiler.EntityMetaData {
 
 // TwitterAccountSave saves the TwitterAccount struct to the database.
 var TwitterAccountSave = func(account *TwitterAccount) error {
-	return sqlboiler.EntitySave(account, db)
+	return sqlboiler.EntitySave(account, dbx)
 }
 
 // Save saves the TwitterAccount struct to the database.
@@ -47,7 +46,7 @@ func (account *TwitterAccount) Save() error {
 
 // TwitterAccountDelete deletes the TwitterAccount from the database
 var TwitterAccountDelete = func(account *TwitterAccount) error {
-	return sqlboiler.EntityDelete(account, db)
+	return sqlboiler.EntityDelete(account, dbx)
 }
 
 // Delete deletes the TwitterAccount from the database
@@ -135,9 +134,6 @@ var TwitterAccountsAll = func(query TwitterAccountQuery) ([]TwitterAccountList, 
 	if err != nil {
 		return nil, recordCount, err
 	}
-
-	fmt.Println(sqlString)
-	fmt.Println(args)
 
 	rows, err := dbx.Queryx(sqlString, args...)
 	if err != nil {

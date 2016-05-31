@@ -32,7 +32,7 @@ func (tweet *Tweet) MetaData() sqlboiler.EntityMetaData {
 
 // TweetSave saves the Tweet struct to the database.
 var TweetSave = func(tweet *Tweet) error {
-	return sqlboiler.EntitySave(tweet, db)
+	return sqlboiler.EntitySave(tweet, dbx)
 }
 
 // Save saves the Tweet struct to the database.
@@ -42,7 +42,7 @@ func (tweet *Tweet) Save() error {
 
 // TweetDelete deletes the Tweet from the database
 var TweetDelete = func(tweet *Tweet) error {
-	return sqlboiler.EntityDelete(tweet, db)
+	return sqlboiler.EntityDelete(tweet, dbx)
 }
 
 // Delete deletes the Tweet from the database
