@@ -10,6 +10,8 @@ import (
 	"os"
 	"reflect"
 	"strings"
+	"sync"
+	"time"
 )
 
 // ErrPrimaryConfigFileNotExist is returned if the primary JSON config file doesn't exist
@@ -19,8 +21,148 @@ var ErrPrimaryConfigFileNotExist = fmt.Errorf("config: primary config file does 
 // struct to pass config data into is not a pointer
 var ErrConfigDataNotPointer = fmt.Errorf("config: configData argument is not a pointer")
 
+type configFile struct {
+	Path                string
+	PathLastModified    time.Time
+	AltExists           bool
+	AltPath             string
+	AltPathLastModified time.Time
+	ConfigData          interface{}
+}
+
+var (
+	cache    = make(map[string]configFile)
+	cacheMux = sync.RWMutex{}
+)
+
+var (
+	// ReloadPollingInterval sets how often config files are checked for changes
+	ReloadPollingInterval = time.Duration(time.Second * 5)
+	pollingIntervalMutex  = sync.Mutex{}
+	stopPolling           = make(chan bool)
+	pollingTicker         *time.Ticker
+)
+
+// SetReloadPollingInterval determines how often we should
+// check for changes to the config files, so we can reload them.
+func SetReloadPollingInterval(duration time.Duration) {
+	pollingIntervalMutex.Lock()
+	defer pollingIntervalMutex.Unlock()
+
+	ReloadPollingInterval = duration
+
+	if pollingTicker != nil {
+		stopPolling <- true
+		pollingTicker.Stop()
+		pollingTicker = nil
+	}
+
+	pollingTicker = time.NewTicker(ReloadPollingInterval)
+
+	go func(ticker *time.Ticker) {
+		for {
+			select {
+			case <-ticker.C:
+				for key, config := range cache {
+					pathInfo, err := os.Stat(config.Path)
+					if err != nil {
+						break
+					}
+
+					var altPathInfo os.FileInfo
+					if config.AltExists {
+						altPathInfo, err = os.Stat(config.AltPath)
+						if err != nil {
+							break
+						}
+					}
+
+					if pathInfo.ModTime().After(config.PathLastModified) ||
+						(config.AltExists && altPathInfo.ModTime().After(config.AltPathLastModified)) {
+						cacheMux.Lock()
+						delete(cache, key)
+						cacheMux.Unlock()
+					}
+				}
+			case <-stopPolling:
+				return
+			}
+		}
+	}(pollingTicker)
+}
+
+func init() {
+	SetReloadPollingInterval(time.Duration(time.Second * 5))
+}
+
+// LoadWithCaching will load a configuration json file into a struct with built in support for caching
+func LoadWithCaching(path, environment string, configData interface{}) error {
+	cacheMux.RLock()
+
+	cacheKey := path + "_" + environment
+	cachedConfig, isCached := cache[cacheKey]
+
+	if isCached {
+		value := reflect.ValueOf(cachedConfig.ConfigData)
+		reflect.ValueOf(configData).Elem().Set(value)
+		cacheMux.RUnlock()
+		return nil
+	}
+
+	cacheMux.RUnlock()
+
+	cacheMux.Lock()
+	defer cacheMux.Unlock()
+
+	cachedConfig, isCached = cache[cacheKey]
+	if isCached {
+		value := reflect.ValueOf(cachedConfig.ConfigData)
+		reflect.ValueOf(configData).Elem().Set(value)
+		return nil
+	}
+
+	err := Load(path, environment, configData)
+	if err != nil {
+		return err
+	}
+
+	pathInfo, err := os.Stat(path)
+	if err != nil {
+		return err
+	}
+
+	altExists := true
+	altPath := generateAltPath(path, environment)
+	altPathInfo, err := os.Stat(altPath)
+	if os.IsNotExist(err) {
+		altExists = false
+	} else if err != nil {
+		return err
+	}
+
+	configInfo := configFile{
+		Path:             path,
+		PathLastModified: pathInfo.ModTime(),
+		AltExists:        altExists,
+		ConfigData:       reflect.ValueOf(configData).Elem().Interface(),
+	}
+
+	if altExists {
+		configInfo.AltPath = altPath
+		configInfo.AltPathLastModified = altPathInfo.ModTime()
+	}
+
+	cache[cacheKey] = configInfo
+
+	return nil
+}
+
 // Load will load a configuration json file into a struct
 func Load(path, environment string, configData interface{}) (err error) {
+	if reflect.TypeOf(configData).Kind() != reflect.Ptr {
+		return ErrConfigDataNotPointer
+	}
+
 	file, err := os.Open(path)
 	if os.IsNotExist(err) {
 		return ErrPrimaryConfigFileNotExist
@@ -28,16 +170,12 @@ func Load(path, environment string, configData interface{}) (err error) {
 		return fmt.Errorf("config: error opening primary config file: %s", err)
 	}
 
-	if reflect.TypeOf(configData).Kind() != reflect.Ptr {
-		return ErrConfigDataNotPointer
-	}
-
 	err = json.NewDecoder(file).Decode(configData)
 	if err != nil {
 		return fmt.Errorf("config: cannot unmarshal config file: %s", err)
 	}
 
-	altPath := strings.Replace(path, ".json", "."+environment+".json", 1)
+	altPath := generateAltPath(path, environment)
 
 	altFile, err := os.Open(altPath)
 	if err != nil && !os.IsNotExist(err) {
@@ -64,6 +202,10 @@ func Load(path, environment string, configData interface{}) (err error) {
 	parseMap(altConfigData, configValue)
 
 	return
+}
+
+func generateAltPath(path, environment string) string {
+	return strings.Replace(path, ".json", "."+environment+".json", 1)
 }
 
 func parseMap(aMap map[string]interface{}, configValue reflect.Value) {
