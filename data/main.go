@@ -23,7 +23,7 @@ import (
 
 func main() {
 	var configuration api.Config
-	err := config.Load("config.json", "dev", &configuration)
+	err := config.LoadWithCaching("config.json", "dev", &configuration)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -71,6 +71,13 @@ func main() {
 			res.Header().Set("Content-Type", "application/json; charset=utf-8")
 
 			appContext := api.AppContext{}
+
+			var configuration api.Config
+			err := config.LoadWithCaching("config.json", "dev", &configuration)
+			if err != nil {
+				panic(err)
+			}
+
 			appContext.Settings = configuration
 			ctx = context.WithValue(ctx, "appContext", &appContext)
 
