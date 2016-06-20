@@ -13,7 +13,7 @@ import (
 
 	"github.com/sironfoot/go-twitter-bot/data/api"
 	"github.com/sironfoot/go-twitter-bot/data/db"
-	"github.com/sironfoot/go-twitter-bot/lib/config"
+	"github.com/sironfoot/transfig"
 
 	"goji.io"
 	"goji.io/middleware"
@@ -23,7 +23,7 @@ import (
 
 func main() {
 	var configuration api.Config
-	err := config.LoadWithCaching("config.json", "dev", &configuration)
+	err := transfig.LoadWithCaching("config.json", "dev", &configuration)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -73,7 +73,7 @@ func main() {
 			appContext := api.AppContext{}
 
 			var configuration api.Config
-			err := config.LoadWithCaching("config.json", "dev", &configuration)
+			err := transfig.LoadWithCaching("config.json", "dev", &configuration)
 			if err != nil {
 				panic(err)
 			}
